@@ -1,0 +1,2825 @@
+{
+  "automatic_data_segment": 10,
+  "entries": [
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 8796,
+      "ordinal": 1,
+      "segment": 2
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 10602,
+      "ordinal": 2,
+      "segment": 2
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 0,
+      "ordinal": 4,
+      "segment": 6
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 10062,
+      "ordinal": 9,
+      "segment": 2
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 4118,
+      "ordinal": 11,
+      "segment": 4
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 398,
+      "ordinal": 12,
+      "segment": 6
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 966,
+      "ordinal": 13,
+      "segment": 6
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 10906,
+      "ordinal": 14,
+      "segment": 2
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 11198,
+      "ordinal": 15,
+      "segment": 2
+    },
+    {
+      "flags": "0x01",
+      "movable": false,
+      "offset": 10342,
+      "ordinal": 16,
+      "segment": 2
+    }
+  ],
+  "entry": {
+    "offset": 26,
+    "segment": 1
+  },
+  "expected_windows_version": "3.0",
+  "file": "CHIPS.EXE",
+  "heap_size": 2048,
+  "import_modules": [
+    "KERNEL",
+    "GDI",
+    "USER",
+    "WEP4UTIL"
+  ],
+  "initial_stack": {
+    "offset": 0,
+    "segment": 10
+  },
+  "linker_version": "5.30",
+  "ne_offset": 1024,
+  "nonresident_names": [
+    {
+      "name": "Chips Challenge",
+      "ordinal": 0
+    },
+    {
+      "name": "BOARDWNDPROC",
+      "ordinal": 9
+    },
+    {
+      "name": "MAINWNDPROC",
+      "ordinal": 1
+    },
+    {
+      "name": "INFOWNDPROC",
+      "ordinal": 16
+    },
+    {
+      "name": "PASSWORDMSGPROC",
+      "ordinal": 11
+    },
+    {
+      "name": "GOTOLEVELMSGPROC",
+      "ordinal": 4
+    },
+    {
+      "name": "HINTWNDPROC",
+      "ordinal": 15
+    },
+    {
+      "name": "INVENTORYWNDPROC",
+      "ordinal": 14
+    },
+    {
+      "name": "COMPLETEMSGPROC",
+      "ordinal": 13
+    },
+    {
+      "name": "BESTTIMESMSGPROC",
+      "ordinal": 12
+    },
+    {
+      "name": "COUNTERWNDPROC",
+      "ordinal": 2
+    }
+  ],
+  "relocations": [
+    {
+      "flags": "0x00",
+      "segment": 1,
+      "source_offset": 2276,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 1
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 1,
+      "source_offset": 459,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 1545,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 1
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 73,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 3
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 1346,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 131
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2174,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 5
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2339,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 6
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2245,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 7
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 1536,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 137
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2375,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 10
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2055,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 16
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2069,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 20
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 130,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 5
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2162,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 23
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 2186,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 24
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 121,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 30
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 985,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 49
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 16,
+      "source_type": 5,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 178
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 30,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 91
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 1,
+      "source_offset": 882,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 102
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 79,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 104
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9777,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 106
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10641,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 107
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 6777,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 1
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1665,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 109
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9674,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 110
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 6590,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 127
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9923,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 111
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 10987,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 6766,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 128
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1707,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 113
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 7575,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 129
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1717,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 114
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 241,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 3
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 2331,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 5
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 7506,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 134
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9325,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 7
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 9007,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 4
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11470,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 128
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11401,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 1
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 5813,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 2
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 8601,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 5
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9573,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 124
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9564,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 125
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1197,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 127
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 8160,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 6
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9162,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 1
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11383,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 9
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 9756,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 7
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10666,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 133
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 3297,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 134
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9332,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 6
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 10023,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 8
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1593,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 2
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 5937,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 10
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 6037,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 12
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 7837,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 4
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 2,
+      "source_offset": 10822,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 9
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9234,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 5
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 2351,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 15
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8569,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 18
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8780,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 19
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10553,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 29
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 2318,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 150
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10459,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 34
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8760,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 154
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9111,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 155
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9900,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 411
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9994,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 31
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9877,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 159
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8769,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 160
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10778,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 33
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8170,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 51
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11430,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 420
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8205,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 52
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11540,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 45
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10658,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 39
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11704,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 40
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 3157,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 41
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 7857,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 42
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8962,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 52
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8558,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 173
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1785,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 174
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10410,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 175
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11524,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 57
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8901,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 177
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1693,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 178
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 7863,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 53
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 1926,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 57
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9270,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 68
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 978,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 61
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11651,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 69
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9729,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 66
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9767,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 68
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8575,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 69
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11515,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 88
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11462,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 80
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 3588,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 82
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 7584,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 90
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11355,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 78
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 10485,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 87
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 11582,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 85
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 5214,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 93
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 8198,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 87
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9403,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 471
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 9525,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 483
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 2,
+      "source_offset": 2437,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 102
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 3,
+      "source_offset": 1854,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 1
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 3,
+      "source_offset": 9560,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 3,
+      "source_offset": 10413,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 3
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 3,
+      "source_offset": 5925,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 4
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 3,
+      "source_offset": 490,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 15
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 3,
+      "source_offset": 471,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 16
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 3,
+      "source_offset": 511,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 18
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 3,
+      "source_offset": 445,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 19
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 3,
+      "source_offset": 9728,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 7
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 3,
+      "source_offset": 10459,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 8
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4199,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 110
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4211,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 103
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 4,
+      "source_offset": 3811,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 4,
+      "source_offset": 1959,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 3
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 4,
+      "source_offset": 3829,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 4
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 1429,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 125
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 619,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 17
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 606,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 19
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 557,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 134
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 4,
+      "source_offset": 1111,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 8
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 902,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 18
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 1519,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 19
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4379,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 22
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 457,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 155
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4549,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 51
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4229,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 420
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4583,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 52
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 404,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 37
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 891,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 173
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 3875,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 74
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4178,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 1202
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4082,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 81
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 2841,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 82
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 3312,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 84
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 1514,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 69
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4011,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 88
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 3851,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 471
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4576,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 87
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4426,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 88
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4373,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 91
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4245,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 92
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4282,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 93
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 4,
+      "source_offset": 4396,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 101
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 5,
+      "source_offset": 83,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 199,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 3
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 427,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 7
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 5,
+      "source_offset": 358,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 9
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 252,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 154
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 261,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 160
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 339,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 175
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 405,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 69
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 20,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 66
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 194,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 68
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 5,
+      "source_offset": 31,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 80
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 6,
+      "source_offset": 1149,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 1
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 1051,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 110
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 543,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 111
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 1063,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 103
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 6,
+      "source_offset": 1396,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 6,
+      "source_offset": 140,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 4
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 273,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 22
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 846,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 34
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 1250,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 420
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 1030,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "WEP4UTIL",
+        "symbol": 1202
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 947,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 88
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 267,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 91
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 1267,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 92
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 161,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 93
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 130,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 95
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 6,
+      "source_offset": 290,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 101
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 7,
+      "source_offset": 6914,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 7,
+      "source_offset": 6739,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 3
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 7,
+      "source_offset": 5513,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 4
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 7,
+      "source_offset": 3295,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 6
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 7,
+      "source_offset": 6677,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 7
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 7,
+      "source_offset": 6691,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 8
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3009,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 34
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 2665,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 35
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3305,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 51
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3336,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 52
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3116,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 420
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 2976,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 45
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 2959,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 175
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3027,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 69
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 2697,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 66
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3261,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 68
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 7,
+      "source_offset": 3329,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 87
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 953,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 111
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 8,
+      "source_offset": 970,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 2
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1229,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 5
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1107,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 7
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 8,
+      "source_offset": 1056,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 8
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1028,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 18
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1076,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 19
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 984,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 155
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 50,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 50
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 636,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 420
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1016,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 173
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1036,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "USER",
+        "symbol": 69
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 1248,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 88
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 665,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 90
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 29,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 95
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 255,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 96
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 8,
+      "source_offset": 18,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 107
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 9,
+      "source_offset": 213,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 19
+      }
+    },
+    {
+      "flags": "0x00",
+      "segment": 9,
+      "source_offset": 99,
+      "source_type": 2,
+      "target": {
+        "kind": "internal",
+        "offset_or_ordinal": 0,
+        "segment": 9
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 9,
+      "source_offset": 28,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 60
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 9,
+      "source_offset": 112,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 61
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 9,
+      "source_offset": 125,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 62
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 9,
+      "source_offset": 222,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "KERNEL",
+        "symbol": 63
+      }
+    },
+    {
+      "flags": "0x01",
+      "segment": 9,
+      "source_offset": 324,
+      "source_type": 3,
+      "target": {
+        "kind": "import_ordinal",
+        "module": "GDI",
+        "symbol": 443
+      }
+    }
+  ],
+  "resident_names": [
+    {
+      "name": "CHIPS",
+      "ordinal": 0
+    }
+  ],
+  "resources": [
+    {
+      "file_offset": 54784,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": 256,
+      "size": 512,
+      "type": 14,
+      "usage": 0
+    },
+    {
+      "file_offset": 55296,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "OBJ32_4",
+      "size": 73728,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 129024,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "OBJ32_4E",
+      "size": 67584,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 196608,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "OBJ32_1",
+      "size": 27136,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 223744,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "BACKGROUND",
+      "size": 6656,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 230400,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": 200,
+      "size": 7168,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 237568,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "INFOWND",
+      "size": 6144,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 243712,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "CHIPEND",
+      "size": 17408,
+      "type": 2,
+      "usage": 0
+    },
+    {
+      "file_offset": 261120,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "CHIPSMENU",
+      "size": 512,
+      "type": 4,
+      "usage": 0
+    },
+    {
+      "file_offset": 261632,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLG_GOTO",
+      "size": 512,
+      "type": 5,
+      "usage": 0
+    },
+    {
+      "file_offset": 262144,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLG_PASSWORD",
+      "size": 512,
+      "type": 5,
+      "usage": 0
+    },
+    {
+      "file_offset": 262656,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLG_BESTTIMES",
+      "size": 512,
+      "type": 5,
+      "usage": 0
+    },
+    {
+      "file_offset": 263168,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLG_COMPLETE",
+      "size": 512,
+      "type": 5,
+      "usage": 0
+    },
+    {
+      "file_offset": 263680,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": 17,
+      "size": 512,
+      "type": 6,
+      "usage": 0
+    },
+    {
+      "file_offset": 264192,
+      "flags": "0x0c30",
+      "handle": 0,
+      "id": "CHIPSMENU",
+      "size": 512,
+      "type": 9,
+      "usage": 0
+    },
+    {
+      "file_offset": 264704,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLGINCLUDE",
+      "size": 512,
+      "type": 10,
+      "usage": 0
+    },
+    {
+      "file_offset": 265216,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLGINCLUDE",
+      "size": 512,
+      "type": 10,
+      "usage": 0
+    },
+    {
+      "file_offset": 265728,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLGINCLUDE",
+      "size": 512,
+      "type": 10,
+      "usage": 0
+    },
+    {
+      "file_offset": 266240,
+      "flags": "0x1c30",
+      "handle": 0,
+      "id": "DLGINCLUDE",
+      "size": 512,
+      "type": 10,
+      "usage": 0
+    },
+    {
+      "file_offset": 266752,
+      "flags": "0x1c10",
+      "handle": 0,
+      "id": 1,
+      "size": 1024,
+      "type": 3,
+      "usage": 0
+    }
+  ],
+  "segment_alignment_shift": 9,
+  "segments": [
+    {
+      "file_offset": 2560,
+      "file_size": 2386,
+      "flags": "0x1d50",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 2386,
+      "number": 1
+    },
+    {
+      "file_offset": 5632,
+      "file_size": 11722,
+      "flags": "0x1d50",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 11722,
+      "number": 2
+    },
+    {
+      "file_offset": 25088,
+      "file_size": 10864,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 10864,
+      "number": 3
+    },
+    {
+      "file_offset": 36352,
+      "file_size": 4616,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 4616,
+      "number": 4
+    },
+    {
+      "file_offset": 41472,
+      "file_size": 444,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 444,
+      "number": 5
+    },
+    {
+      "file_offset": 42496,
+      "file_size": 1883,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 1884,
+      "number": 6
+    },
+    {
+      "file_offset": 44544,
+      "file_size": 7380,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 7380,
+      "number": 7
+    },
+    {
+      "file_offset": 52224,
+      "file_size": 1568,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 1568,
+      "number": 8
+    },
+    {
+      "file_offset": 54272,
+      "file_size": 336,
+      "flags": "0x1d10",
+      "has_relocations": true,
+      "kind": "code",
+      "minimum_allocation": 336,
+      "number": 9
+    },
+    {
+      "file_offset": 18432,
+      "file_size": 5944,
+      "flags": "0x0c51",
+      "has_relocations": false,
+      "kind": "data",
+      "minimum_allocation": 5944,
+      "number": 10
+    }
+  ],
+  "sha256": "8e26acd67cf120bd5b512de4b4e78b80aca1579413cd04f3b2b68909a375866c",
+  "size": 267776,
+  "stack_size": 8192,
+  "target_os": 2
+}

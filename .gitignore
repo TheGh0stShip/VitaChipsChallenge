@@ -1,0 +1,7 @@
+/build*/
+/reference/*
+!/reference/README.md
+*.velf
+*.self
+*.vpk
+
