@@ -30,7 +30,10 @@ int main(void)
         || strcmp(parsed.levels[0].title, "LESSON 1") != 0
         || strcmp(parsed.levels[0].password, "BDHP") != 0
         || parsed.levels[0].time_limit != 100U
-        || parsed.levels[0].chips_required != 11U)
+        || parsed.levels[0].chips_required != 11U
+        || parsed.levels[4].trap_count != 2U
+        || parsed.levels[4].clone_count != 1U
+        || parsed.levels[4].creature_count != 3U)
         return 1;
     puts("reference DAT verified: 149 levels, first level LESSON 1 / BDHP");
     return 0;

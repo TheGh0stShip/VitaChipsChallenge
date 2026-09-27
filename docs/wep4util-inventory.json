@@ -339,6 +339,9 @@
   ],
   "relocations": [
     {
+      "fixup_sites": [
+        6072
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6072,
@@ -350,6 +353,10 @@
       }
     },
     {
+      "fixup_sites": [
+        1619,
+        2171
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1619,
@@ -361,6 +368,13 @@
       }
     },
     {
+      "fixup_sites": [
+        2371,
+        2634,
+        2654,
+        280,
+        297
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 2371,
@@ -372,6 +386,9 @@
       }
     },
     {
+      "fixup_sites": [
+        3844
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 3844,
@@ -383,6 +400,9 @@
       }
     },
     {
+      "fixup_sites": [
+        4108
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4108,
@@ -394,6 +414,9 @@
       }
     },
     {
+      "fixup_sites": [
+        6478
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6478,
@@ -405,6 +428,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5839
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 5839,
@@ -416,6 +442,9 @@
       }
     },
     {
+      "fixup_sites": [
+        6825
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6825,
@@ -427,6 +456,9 @@
       }
     },
     {
+      "fixup_sites": [
+        289
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 289,
@@ -438,6 +470,9 @@
       }
     },
     {
+      "fixup_sites": [
+        2248
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2248,
@@ -449,6 +484,9 @@
       }
     },
     {
+      "fixup_sites": [
+        2258
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2258,
@@ -460,6 +498,11 @@
       }
     },
     {
+      "fixup_sites": [
+        1866,
+        1891,
+        1914
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1866,
@@ -471,6 +514,10 @@
       }
     },
     {
+      "fixup_sites": [
+        5779,
+        6446
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5779,
@@ -482,6 +529,11 @@
       }
     },
     {
+      "fixup_sites": [
+        4755,
+        4459,
+        1006
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 4755,
@@ -493,6 +545,9 @@
       }
     },
     {
+      "fixup_sites": [
+        6834
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 6834,
@@ -504,6 +559,9 @@
       }
     },
     {
+      "fixup_sites": [
+        148
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 148,
@@ -515,6 +573,16 @@
       }
     },
     {
+      "fixup_sites": [
+        1449,
+        1474,
+        1545,
+        1570,
+        1711,
+        1777,
+        1800,
+        1828
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1449,
@@ -526,6 +594,9 @@
       }
     },
     {
+      "fixup_sites": [
+        226
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 226,
@@ -537,6 +608,9 @@
       }
     },
     {
+      "fixup_sites": [
+        254
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 254,
@@ -548,6 +622,10 @@
       }
     },
     {
+      "fixup_sites": [
+        5580,
+        1315
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5580,
@@ -559,6 +637,10 @@
       }
     },
     {
+      "fixup_sites": [
+        4980,
+        4993
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4980,
@@ -570,6 +652,10 @@
       }
     },
     {
+      "fixup_sites": [
+        85,
+        127
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 85,
@@ -581,6 +667,10 @@
       }
     },
     {
+      "fixup_sites": [
+        6018,
+        4967
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6018,
@@ -592,6 +682,12 @@
       }
     },
     {
+      "fixup_sites": [
+        1418,
+        1662,
+        2055,
+        1159
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1418,
@@ -603,6 +699,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5890
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5890,
@@ -614,6 +713,9 @@
       }
     },
     {
+      "fixup_sites": [
+        4860
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4860,
@@ -625,6 +727,9 @@
       }
     },
     {
+      "fixup_sites": [
+        3756
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 3756,
@@ -636,6 +741,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5472
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5472,
@@ -647,6 +755,11 @@
       }
     },
     {
+      "fixup_sites": [
+        4820,
+        4524,
+        1031
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4820,
@@ -658,6 +771,16 @@
       }
     },
     {
+      "fixup_sites": [
+        3047,
+        1402,
+        1516,
+        1581,
+        1678,
+        1743,
+        1839,
+        595
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 3047,
@@ -669,6 +792,10 @@
       }
     },
     {
+      "fixup_sites": [
+        1359,
+        2039
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1359,
@@ -680,6 +807,10 @@
       }
     },
     {
+      "fixup_sites": [
+        1594,
+        2146
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1594,
@@ -691,6 +822,10 @@
       }
     },
     {
+      "fixup_sites": [
+        4674,
+        1215
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4674,
@@ -702,6 +837,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5176
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5176,
@@ -713,6 +851,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5981
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5981,
@@ -724,6 +865,10 @@
       }
     },
     {
+      "fixup_sites": [
+        2973,
+        502
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2973,
@@ -735,6 +880,9 @@
       }
     },
     {
+      "fixup_sites": [
+        185
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 185,
@@ -746,6 +894,12 @@
       }
     },
     {
+      "fixup_sites": [
+        4290,
+        3564,
+        3640,
+        904
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4290,
@@ -757,6 +911,10 @@
       }
     },
     {
+      "fixup_sites": [
+        3000,
+        548
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 3000,
@@ -768,6 +926,10 @@
       }
     },
     {
+      "fixup_sites": [
+        5627,
+        5660
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5627,
@@ -779,6 +941,9 @@
       }
     },
     {
+      "fixup_sites": [
+        153
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 153,
@@ -790,6 +955,9 @@
       }
     },
     {
+      "fixup_sites": [
+        639
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 639,
@@ -801,6 +969,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5334
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5334,
@@ -812,6 +983,9 @@
       }
     },
     {
+      "fixup_sites": [
+        231
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 231,
@@ -823,6 +997,9 @@
       }
     },
     {
+      "fixup_sites": [
+        3886
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 3886,
@@ -834,6 +1011,9 @@
       }
     },
     {
+      "fixup_sites": [
+        259
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 259,
@@ -845,6 +1025,11 @@
       }
     },
     {
+      "fixup_sites": [
+        6030,
+        6048,
+        43
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6030,
@@ -856,6 +1041,9 @@
       }
     },
     {
+      "fixup_sites": [
+        3072
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 3072,
@@ -867,6 +1055,10 @@
       }
     },
     {
+      "fixup_sites": [
+        5110,
+        5157
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5110,
@@ -878,6 +1070,11 @@
       }
     },
     {
+      "fixup_sites": [
+        219,
+        247,
+        275
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 219,
@@ -889,6 +1086,10 @@
       }
     },
     {
+      "fixup_sites": [
+        3151,
+        670
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 3151,
@@ -900,6 +1101,11 @@
       }
     },
     {
+      "fixup_sites": [
+        5431,
+        3173,
+        692
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5431,
@@ -911,6 +1117,10 @@
       }
     },
     {
+      "fixup_sites": [
+        2576,
+        2938
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2576,
@@ -922,6 +1132,10 @@
       }
     },
     {
+      "fixup_sites": [
+        1646,
+        91
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1646,
@@ -933,6 +1147,12 @@
       }
     },
     {
+      "fixup_sites": [
+        2403,
+        2434,
+        2720,
+        2751
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2403,
@@ -944,6 +1164,9 @@
       }
     },
     {
+      "fixup_sites": [
+        2662
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2662,
@@ -955,6 +1178,10 @@
       }
     },
     {
+      "fixup_sites": [
+        1850,
+        136
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1850,
@@ -966,6 +1193,9 @@
       }
     },
     {
+      "fixup_sites": [
+        2799
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2799,
@@ -977,6 +1207,10 @@
       }
     },
     {
+      "fixup_sites": [
+        2379,
+        2642
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2379,
@@ -988,6 +1222,10 @@
       }
     },
     {
+      "fixup_sites": [
+        2701,
+        2929
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2701,
@@ -999,6 +1237,11 @@
       }
     },
     {
+      "fixup_sites": [
+        5389,
+        4557,
+        1223
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 5389,
@@ -1010,6 +1253,15 @@
       }
     },
     {
+      "fixup_sites": [
+        5958,
+        6271,
+        5324,
+        3951,
+        3976,
+        2827,
+        305
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5958,
@@ -1021,6 +1273,9 @@
       }
     },
     {
+      "fixup_sites": [
+        102
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 102,
@@ -1032,6 +1287,11 @@
       }
     },
     {
+      "fixup_sites": [
+        4806,
+        4510,
+        485
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 4806,
@@ -1043,6 +1303,16 @@
       }
     },
     {
+      "fixup_sites": [
+        4781,
+        4485,
+        460,
+        737,
+        811,
+        837,
+        862,
+        888
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 4781,
@@ -1054,6 +1324,9 @@
       }
     },
     {
+      "fixup_sites": [
+        5500
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 5500,
@@ -1065,6 +1338,9 @@
       }
     },
     {
+      "fixup_sites": [
+        636
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 636,
@@ -1076,6 +1352,9 @@
       }
     },
     {
+      "fixup_sites": [
+        2096
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2096,
@@ -1087,6 +1366,9 @@
       }
     },
     {
+      "fixup_sites": [
+        3883
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 3883,
@@ -1098,6 +1380,15 @@
       }
     },
     {
+      "fixup_sites": [
+        1396,
+        1510,
+        1672,
+        1737,
+        2076,
+        2127,
+        2265
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 1396,
@@ -1109,6 +1400,9 @@
       }
     },
     {
+      "fixup_sites": [
+        3069
+      ],
       "flags": "0x00",
       "segment": 1,
       "source_offset": 3069,
@@ -1120,6 +1414,10 @@
       }
     },
     {
+      "fixup_sites": [
+        2082,
+        2133
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2082,
@@ -1131,6 +1429,11 @@
       }
     },
     {
+      "fixup_sites": [
+        3889,
+        3075,
+        642
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 3889,
@@ -1142,6 +1445,10 @@
       }
     },
     {
+      "fixup_sites": [
+        2459,
+        2776
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 2459,
@@ -1153,6 +1460,11 @@
       }
     },
     {
+      "fixup_sites": [
+        5514,
+        4610,
+        1251
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 5514,
@@ -1164,6 +1476,11 @@
       }
     },
     {
+      "fixup_sites": [
+        4852,
+        4953,
+        5121
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4852,
@@ -1175,6 +1492,15 @@
       }
     },
     {
+      "fixup_sites": [
+        6506,
+        4891,
+        4931,
+        4549,
+        1074,
+        1110,
+        1146
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6506,
@@ -1186,6 +1512,9 @@
       }
     },
     {
+      "fixup_sites": [
+        4600
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 4600,
@@ -1197,6 +1526,10 @@
       }
     },
     {
+      "fixup_sites": [
+        6791,
+        6784
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6791,
@@ -1208,6 +1541,12 @@
       }
     },
     {
+      "fixup_sites": [
+        6535,
+        5360,
+        5381,
+        5414
+      ],
       "flags": "0x01",
       "segment": 1,
       "source_offset": 6535,
@@ -1219,6 +1558,33 @@
       }
     },
     {
+      "fixup_sites": [
+        208,
+        206,
+        204,
+        202,
+        198,
+        200,
+        194,
+        196,
+        188,
+        190,
+        192,
+        186,
+        166,
+        168,
+        170,
+        172,
+        174,
+        176,
+        178,
+        180,
+        182,
+        184,
+        160,
+        162,
+        164
+      ],
       "flags": "0x00",
       "segment": 3,
       "source_offset": 208,

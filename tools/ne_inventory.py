@@ -140,6 +140,14 @@ def main() -> int:
                     "source_type": source_type,
                     "flags": f"0x{target_flags:02x}",
                 }
+                sites = []
+                site = source_offset
+                while site != 0xFFFF and site not in sites:
+                    if site + 2 > (length or 0x10000):
+                        break
+                    sites.append(site)
+                    site = u16(data, (sector << alignment) + site)
+                record["fixup_sites"] = sites
                 target_kind = target_flags & 3
                 if target_kind == 0:
                     record["target"] = {

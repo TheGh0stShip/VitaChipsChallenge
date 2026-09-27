@@ -34,13 +34,31 @@ supplied `CHIPS.DAT` and is verified against all 149 records.
   count, and map-format value `1`.
 - Two 32 by 32 tile layers use byte RLE. `FF count value` expands a run;
   other bytes are literals.
-- Metadata uses byte type and byte length fields. Confirmed text fields are
-  title (3), XOR-encoded password (6), and hint (7).
+- Metadata uses byte type and byte length fields. Confirmed fields are title
+  (3), trap links (4), clone links (5), XOR-encoded password (6), hint (7),
+  and ordered creature positions (10).
 - Password bytes are XORed with `0x99`; level 1 decodes to `BDHP`.
 
-The remaining metadata types contain trap links, clone links, and creature
-ordering. They are preserved as the next DAT reconstruction milestone rather
-than being guessed from third-party source.
+All metadata types present in the supplied 149-level file are parsed. Trap
+records use five little-endian 16-bit values, clone records use four, and each
+ordered creature position is an `(x, y)` byte pair.
+
+## Reconstructed gameplay slice
+
+`src/game.c` is an independent fixed-width C implementation. The current slice
+reconstructs map layering, player direction and collision, thin walls, movable
+blocks, water-to-dirt conversion, chips, sockets, keys, doors, boots, thief,
+fire, water, bombs, fake blue walls, toggle buttons, exits, and the 20 Hz level
+timer. Unsupported tile systems remain listed in the README so the repository
+does not overstate compatibility.
+
+## Original graphics pipeline
+
+`tools/extract_ne_resources.py` reads bitmap offsets from the checked-in NE
+inventory and wraps each Windows DIB in a standard BMP header. The port uses
+the 416 by 512 `OBJ32_4` sheet directly. `tools/build_vita_assets.py` derives
+the icon, splash, LiveArea background, and system background from `OBJ32_4`,
+`BACKGROUND`, and `CHIPEND`; it introduces no generated or clone artwork.
 
 ## Provenance boundary
 
@@ -48,4 +66,3 @@ The former Tile World adaptation is stored outside this repository at
 `VitaChipsChallenge-tworld-reference`. No source from it is copied here. The
 original game archive is ignored under `reference/` and is required only for
 local analysis and personal builds.
-

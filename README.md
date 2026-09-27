@@ -6,8 +6,11 @@ A clean source reconstruction and native PS Vita port of the Microsoft Windows
 ## Status
 
 Reverse engineering has started from the original 16-bit Windows NE executable.
-The repository currently provides a reproducible reference-extraction and
-executable-inventory pipeline. It is not yet a playable release.
+The repository now builds a native Vita VPK which loads all 149 original
+levels, renders the original Windows artwork, accepts Vita controls, and runs
+the first reconstructed gameplay systems. It remains a development preview:
+monster movement, traps, clone machines, teleports, ice, force floors, scoring,
+audio, saves, and reference-accurate timing still need completion.
 
 This project does not use Tile World or another clone as its gameplay engine.
 Every reconstructed subsystem will be tied to behavior or code observed in the
@@ -44,3 +47,32 @@ events.
 No gold release will be declared until the reconstructed engine passes the
 behavior corpus and the exact VPK passes the physical-device checklist.
 
+## Personal Vita build
+
+Install VitaSDK, place the verified `chips_challenge.zip` in `reference/`, then
+run:
+
+```sh
+python3 -m pip install Pillow
+python3 tools/build_vita.py
+```
+
+The result is `build-vita/VitaChipsChallenge.vpk`. The build extracts the DAT,
+sprite sheet, icon, splash, and LiveArea background locally from the supplied
+Windows release. Original copyrighted data and generated packages stay ignored
+by Git.
+
+### Controls
+
+| Control | Action |
+|---|---|
+| D-pad | Move Chip |
+| Cross | Restart current level |
+| L / R | Previous / next level (development navigation) |
+
+## Host reconstruction build
+
+```sh
+cmake -S . -B build-host -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-host
+```

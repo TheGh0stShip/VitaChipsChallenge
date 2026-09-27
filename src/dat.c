@@ -81,6 +81,61 @@ static vcc_dat_result copy_text(char *output, size_t capacity,
     return VCC_DAT_OK;
 }
 
+static uint16_t read_u16_at(const uint8_t *input)
+{
+    return (uint16_t)((uint16_t)input[0]
+        | (uint16_t)((uint16_t)input[1] << 8U));
+}
+
+static vcc_dat_result parse_traps(vcc_level *level,
+                                  const uint8_t *input, size_t length)
+{
+    size_t index;
+    if (length % 10U != 0U || length / 10U > VCC_MAX_TRAP_LINKS)
+        return VCC_DAT_BAD_RECORD;
+    level->trap_count = (uint8_t)(length / 10U);
+    for (index = 0U; index < level->trap_count; ++index) {
+        const uint8_t *entry = input + index * 10U;
+        level->traps[index].button_x = read_u16_at(entry);
+        level->traps[index].button_y = read_u16_at(entry + 2U);
+        level->traps[index].trap_x = read_u16_at(entry + 4U);
+        level->traps[index].trap_y = read_u16_at(entry + 6U);
+        level->traps[index].initially_open = read_u16_at(entry + 8U);
+    }
+    return VCC_DAT_OK;
+}
+
+static vcc_dat_result parse_clones(vcc_level *level,
+                                   const uint8_t *input, size_t length)
+{
+    size_t index;
+    if (length % 8U != 0U || length / 8U > VCC_MAX_CLONE_LINKS)
+        return VCC_DAT_BAD_RECORD;
+    level->clone_count = (uint8_t)(length / 8U);
+    for (index = 0U; index < level->clone_count; ++index) {
+        const uint8_t *entry = input + index * 8U;
+        level->clones[index].button_x = read_u16_at(entry);
+        level->clones[index].button_y = read_u16_at(entry + 2U);
+        level->clones[index].machine_x = read_u16_at(entry + 4U);
+        level->clones[index].machine_y = read_u16_at(entry + 6U);
+    }
+    return VCC_DAT_OK;
+}
+
+static vcc_dat_result parse_creatures(vcc_level *level,
+                                      const uint8_t *input, size_t length)
+{
+    size_t index;
+    if (length % 2U != 0U || length / 2U > VCC_MAX_CREATURES)
+        return VCC_DAT_BAD_RECORD;
+    level->creature_count = (uint8_t)(length / 2U);
+    for (index = 0U; index < level->creature_count; ++index) {
+        level->creatures[index].x = input[index * 2U];
+        level->creatures[index].y = input[index * 2U + 1U];
+    }
+    return VCC_DAT_OK;
+}
+
 static vcc_dat_result parse_metadata(cursor *record, vcc_level *level)
 {
     uint16_t metadata_size;
@@ -102,12 +157,18 @@ static vcc_dat_result parse_metadata(cursor *record, vcc_level *level)
         if (type == 3U)
             result = copy_text(level->title, sizeof level->title,
                                record->bytes + record->offset, length, 0);
+        else if (type == 4U)
+            result = parse_traps(level, record->bytes + record->offset, length);
+        else if (type == 5U)
+            result = parse_clones(level, record->bytes + record->offset, length);
         else if (type == 6U)
             result = copy_text(level->password, sizeof level->password,
                                record->bytes + record->offset, length, 1);
         else if (type == 7U)
             result = copy_text(level->hint, sizeof level->hint,
                                record->bytes + record->offset, length, 0);
+        else if (type == 10U)
+            result = parse_creatures(level, record->bytes + record->offset, length);
         if (result != VCC_DAT_OK)
             return result;
         record->offset += length;
