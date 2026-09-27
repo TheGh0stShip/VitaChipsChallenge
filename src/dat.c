@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 #include "vcc/dat.h"
 
 #include <string.h>

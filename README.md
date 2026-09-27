@@ -1,5 +1,7 @@
 # VitaChipsChallenge
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 ![Chip's Challenge retail artwork](assets/branding/chips-challenge-retail.png)
 
 ![Vita3K gameplay using the original Windows sprite sheet](docs/images/vita3k-gameplay.png)
@@ -81,3 +83,18 @@ data and generated packages stay ignored by Git.
 cmake -S . -B build-host -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build-host
 ```
+
+## License
+
+Copyright © 2026 VitaChipsChallenge contributors.
+
+The source code and original project documentation are free software licensed
+under the **GNU General Public License, version 3 only** (`GPL-3.0-only`). You
+may redistribute and modify them under GPLv3. The complete, unmodified license
+text is in [`LICENSE`](LICENSE).
+
+Chip's Challenge game data, names, characters, screenshots, retail artwork,
+and other third-party material remain the property of their respective rights
+holders. They are not relicensed under GPLv3. See
+[`assets/branding/README.md`](assets/branding/README.md) for provenance and
+[`THIRD_PARTY.md`](THIRD_PARTY.md) for the repository licensing boundary.

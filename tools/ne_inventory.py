@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Produce a deterministic inventory of a 16-bit Windows NE executable."""
 
 from __future__ import annotations

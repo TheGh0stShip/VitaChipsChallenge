@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @"
 using System;

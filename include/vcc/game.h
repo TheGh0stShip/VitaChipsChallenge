@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 #ifndef VCC_GAME_H
 #define VCC_GAME_H
 
@@ -115,4 +116,3 @@ uint8_t vcc_game_visible_tile(const vcc_game *game, uint8_t x, uint8_t y);
 unsigned vcc_tile_sprite(unsigned tile);
 
 #endif
-
