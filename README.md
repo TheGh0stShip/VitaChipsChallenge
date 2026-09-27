@@ -1,5 +1,9 @@
 # VitaChipsChallenge
 
+![Chip's Challenge retail artwork](assets/branding/chips-challenge-retail.png)
+
+![Vita3K gameplay using the original Windows sprite sheet](docs/images/vita3k-gameplay.png)
+
 A clean source reconstruction and native PS Vita port of the Microsoft Windows
 3.x version of **Chip's Challenge**.
 
@@ -57,10 +61,11 @@ python3 -m pip install Pillow
 python3 tools/build_vita.py
 ```
 
-The result is `build-vita/VitaChipsChallenge.vpk`. The build extracts the DAT,
-sprite sheet, icon, splash, and LiveArea background locally from the supplied
-Windows release. Original copyrighted data and generated packages stay ignored
-by Git.
+The result is `build-vita/VitaChipsChallenge.vpk`. The build extracts the DAT
+and sprite sheet locally from the supplied Windows release. The bubble icon,
+splash, and LiveArea background combine the original Windows sprites with
+archived retail imagery recorded in `assets/branding/README.md`. Original game
+data and generated packages stay ignored by Git.
 
 ### Controls
 

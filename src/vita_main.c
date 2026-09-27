@@ -51,8 +51,8 @@ static void draw_board(SDL_Renderer *renderer, SDL_Texture *tiles, const vcc_gam
             unsigned tile = vcc_game_visible_tile(game,
                 (uint8_t)(camera_x + x), (uint8_t)(camera_y + y));
             unsigned sprite = vcc_tile_sprite(tile);
-            SDL_Rect source = {(int)(sprite % 13U) * TILE_SIZE,
-                (int)(sprite / 13U) * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+            SDL_Rect source = {(int)(sprite / 16U) * TILE_SIZE,
+                (int)(sprite % 16U) * TILE_SIZE, TILE_SIZE, TILE_SIZE};
             SDL_Rect target = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
             (void)SDL_RenderCopy(renderer, tiles, &source, &target);
         }

@@ -56,11 +56,11 @@ if(VCC_VITA)
   vita_create_vpk(VitaChipsChallenge.vpk "VITA00001" vita_chips.self
     VERSION "01.00"
     NAME "Vita Chips Challenge"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/vita-assets/icon0.png" "sce_sys/icon0.png"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/vita-assets/pic0.png" "sce_sys/pic0.png"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/vita-assets/bg0.png" "sce_sys/livearea/contents/bg0.png"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/vita-assets/startup.png" "sce_sys/livearea/contents/startup.png"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/vita-assets/template.xml" "sce_sys/livearea/contents/template.xml"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/icon0.png" "sce_sys/icon0.png"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/pic0.png" "sce_sys/pic0.png"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/bg0.png" "sce_sys/livearea/contents/bg0.png"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/startup.png" "sce_sys/livearea/contents/startup.png"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/template.xml" "sce_sys/livearea/contents/template.xml"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT" "data/CHIPS.DAT"
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_4.bmp" "data/OBJ32_4.bmp")
 endif()

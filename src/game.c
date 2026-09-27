@@ -230,10 +230,5 @@ uint8_t vcc_game_visible_tile(const vcc_game *game, uint8_t x, uint8_t y)
 
 unsigned vcc_tile_sprite(unsigned tile)
 {
-    if (tile >= 21U && tile <= 31U)
-        return tile - 3U;
-    if (tile >= 33U && tile < 64U)
-        return tile - 4U;
     return tile;
 }
-

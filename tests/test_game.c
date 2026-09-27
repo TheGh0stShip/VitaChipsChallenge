@@ -44,7 +44,7 @@ int main(void)
     CHECK(vcc_game_start(&game, &level));
     CHECK(vcc_game_move(&game, VCC_DIR_EAST));
     CHECK(game.status == VCC_BURNED);
-    CHECK(vcc_tile_sprite(VCC_EXIT) == 18U);
+    CHECK(vcc_tile_sprite(VCC_EXIT) == VCC_EXIT);
     CHECK(vcc_tile_sprite(VCC_CHIP_S) == VCC_CHIP_S);
     puts("game core tests passed");
     return 0;

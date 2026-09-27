@@ -24,11 +24,12 @@ def main() -> None:
         sys.exit(f"missing {archive}; see reference/README.md")
     build = ROOT / "build-vita"
     assets = build / "assets"
-    vita_assets = build / "vita-assets"
+    vita_assets = ROOT / "assets/vita"
     run(sys.executable, "tools/extract_reference.py", archive, "reference/extracted")
     run(sys.executable, "tools/extract_ne_resources.py", "reference/extracted/CHIPS.EXE",
         "docs/reference-inventory.json", assets)
-    run(sys.executable, "tools/build_vita_assets.py", assets, vita_assets)
+    run(sys.executable, "tools/build_vita_assets.py", assets, vita_assets,
+        "--branding", "assets/branding")
     run("cmake", "-S", ".", "-B", build, "-G", "Ninja",
         f"-DCMAKE_TOOLCHAIN_FILE={VITASDK / 'share/vita.toolchain.cmake'}",
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF")
