@@ -29,6 +29,7 @@ def main() -> None:
     run(sys.executable, "tools/extract_reference.py", archive, "reference/extracted")
     run(sys.executable, "tools/extract_ne_resources.py", "reference/extracted/CHIPS.EXE",
         "docs/reference-inventory.json", assets)
+    run(sys.executable, "tools/prepare_runtime_assets.py", assets)
     run(sys.executable, "tools/build_vita_assets.py", assets, vita_assets,
         "--branding", "assets/branding")
     run("cmake", "-S", ".", "-B", build, "-G", "Ninja",

@@ -24,6 +24,20 @@ typedef enum vcc_status {
     VCC_TIMEOUT
 } vcc_status;
 
+typedef enum vcc_event {
+    VCC_EVENT_NONE = 0,
+    VCC_EVENT_PICKUP,
+    VCC_EVENT_DOOR,
+    VCC_EVENT_BLOCKED,
+    VCC_EVENT_WATER,
+    VCC_EVENT_FIRE,
+    VCC_EVENT_BOMB,
+    VCC_EVENT_TELEPORT,
+    VCC_EVENT_COMPLETE,
+    VCC_EVENT_BUTTON,
+    VCC_EVENT_CLOCK
+} vcc_event;
+
 enum vcc_tile {
     VCC_FLOOR = 0,
     VCC_WALL = 1,
@@ -39,6 +53,10 @@ enum vcc_tile {
     VCC_DIRT = 11,
     VCC_ICE = 12,
     VCC_FORCE_SOUTH = 13,
+    VCC_CLONE_BLOCK_N = 14,
+    VCC_CLONE_BLOCK_W = 15,
+    VCC_CLONE_BLOCK_S = 16,
+    VCC_CLONE_BLOCK_E = 17,
     VCC_FORCE_NORTH = 18,
     VCC_FORCE_EAST = 19,
     VCC_FORCE_WEST = 20,
@@ -103,8 +121,13 @@ typedef struct vcc_game {
     uint8_t player_direction;
     uint8_t keys[4];
     uint8_t boots[4];
+    vcc_position creature_order[VCC_MAX_CREATURES];
+    uint8_t creature_count;
+    uint32_t random_state;
+    vcc_event last_event;
     uint16_t chips_left;
     uint32_t ticks;
+    uint8_t timer_started;
     uint32_t time_left_ticks;
     vcc_status status;
 } vcc_game;
@@ -113,6 +136,9 @@ int vcc_game_start(vcc_game *game, const vcc_level *level);
 int vcc_game_move(vcc_game *game, vcc_direction direction);
 void vcc_game_tick(vcc_game *game, vcc_direction input);
 uint8_t vcc_game_visible_tile(const vcc_game *game, uint8_t x, uint8_t y);
+uint8_t vcc_game_terrain_tile(const vcc_game *game, uint8_t x, uint8_t y);
+uint8_t vcc_game_actor_tile(const vcc_game *game, uint8_t x, uint8_t y);
+vcc_event vcc_game_take_event(vcc_game *game);
 unsigned vcc_tile_sprite(unsigned tile);
 
 #endif

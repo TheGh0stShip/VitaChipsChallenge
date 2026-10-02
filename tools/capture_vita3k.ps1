@@ -27,14 +27,16 @@ $callback = [NativeWindows+EnumProc]{
     return $true
 }
 [void][NativeWindows]::EnumWindows($callback, [IntPtr]::Zero)
-$vita3k = Get-Process Vita3K -ErrorAction Stop |
-    Where-Object Path -EQ 'D:\Vita3K\Vita3K.exe' | Select-Object -First 1
-if (-not $vita3k) { throw 'D:\Vita3K\Vita3K.exe is not running' }
+$vita3k = @(Get-Process Vita3K -ErrorAction Stop |
+    Where-Object Path -EQ 'D:\Vita3K\Vita3K.exe')
+if ($vita3k.Count -eq 0) { throw 'D:\Vita3K\Vita3K.exe is not running' }
+$processIds = @($vita3k | ForEach-Object Id)
 $target = $windows | Where-Object {
-    $_.ProcessId -eq $vita3k.Id -and $_.Title -like '*Vita Chips Challenge*'
+    $processIds -contains $_.ProcessId -and $_.Title -like '*Vita Chips Challenge*'
 } | Select-Object -First 1
 if (-not $target) {
-    $target = $windows | Where-Object ProcessId -EQ $vita3k.Id | Select-Object -First 1
+    $target = $windows | Where-Object { $processIds -contains $_.ProcessId } |
+        Select-Object -First 1
 }
 if (-not $target) {
     $windows | Where-Object Title -Like '*Vita3K*' | Format-Table

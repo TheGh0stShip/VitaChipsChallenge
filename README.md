@@ -11,12 +11,17 @@ A clean source reconstruction and native PS Vita port of the Microsoft Windows
 
 ## Status
 
-Reverse engineering has started from the original 16-bit Windows NE executable.
-The repository now builds a native Vita VPK which loads all 149 original
-levels, renders the original Windows artwork, accepts Vita controls, and runs
-the first reconstructed gameplay systems. It remains a development preview:
-monster movement, traps, clone machines, teleports, ice, force floors, scoring,
-audio, saves, and reference-accurate timing still need completion.
+Reverse engineering is in progress from the original 16-bit Windows NE
+executable. The repository builds a native Vita VPK which loads all 149
+original levels, renders the original Windows resources and 16 color palette,
+accepts Vita controls, and runs a growing reconstructed gameplay core. It is a
+development preview. Monster timing and edge cases, complete sliding behavior,
+teleports, traps, clone machines, scoring, music, saves, menus, dialogs, and
+reference-accurate progression still need completion.
+
+The evidence and feature gate are maintained in
+[`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). It is the authoritative list
+of what is confirmed, partial, or missing.
 
 This project does not use Tile World or another clone as its gameplay engine.
 Every reconstructed subsystem will be tied to behavior or code observed in the
@@ -74,8 +79,7 @@ data and generated packages stay ignored by Git.
 | Control | Action |
 |---|---|
 | D-pad | Move Chip |
-| Cross | Restart current level |
-| L / R | Previous / next level (development navigation) |
+| Cross | Restart after failure; continue after completion |
 
 ## Host reconstruction build
 

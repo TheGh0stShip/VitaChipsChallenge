@@ -49,8 +49,18 @@ ordered creature position is an `(x, y)` byte pair.
 reconstructs map layering, player direction and collision, thin walls, movable
 blocks, water-to-dirt conversion, chips, sockets, keys, doors, boots, thief,
 fire, water, bombs, fake blue walls, toggle buttons, exits, and the 20 Hz level
-timer. Unsupported tile systems remain listed in the README so the repository
-does not overstate compatibility.
+timer. The working implementation also includes initial monster movement,
+traps, clone links, teleports, ice, force floors, and event-driven WAV effects.
+Those systems remain partial because their Win16 movement phases and edge cases
+are not yet covered by reference traces. The detailed gate is in
+[`COMPATIBILITY.md`](COMPATIBILITY.md).
+
+## Confirmed interface resources
+
+The `CHIPSMENU` resource at file offset `0x3FC00` proves the original command
+set. Four adjacent dialog templates prove the Go To, Password Entry, Best
+Times, and Level Complete flows. Their exact captions and current implementation
+state are recorded in [`COMPATIBILITY.md`](COMPATIBILITY.md).
 
 ## Original graphics pipeline
 
