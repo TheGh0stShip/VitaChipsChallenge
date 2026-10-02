@@ -10,6 +10,9 @@ public class NativeWindows {
     [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int count);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
 }
 "@
@@ -42,14 +45,26 @@ if (-not $target) {
     $windows | Where-Object Title -Like '*Vita3K*' | Format-Table
     throw 'Vita Chips Challenge window not found'
 }
+[void][NativeWindows]::SetWindowPos($target.Handle, [IntPtr]::Zero, 0, 0, 976, 583, 0x0040)
+[void][NativeWindows]::SetForegroundWindow($target.Handle)
+Start-Sleep -Milliseconds 500
 $rect = [NativeWindows+Rect]::new()
 [void][NativeWindows]::GetWindowRect($target.Handle, [ref]$rect)
 $width = $rect.Right - $rect.Left
 $height = $rect.Bottom - $rect.Top
 $bitmap = [Drawing.Bitmap]::new($width, $height)
 $graphics = [Drawing.Graphics]::FromImage($bitmap)
-$graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, $bitmap.Size)
+$device = $graphics.GetHdc()
+[void][NativeWindows]::PrintWindow($target.Handle, $device, 2)
+$graphics.ReleaseHdc($device)
 $bitmap.Save('D:\Vita3K\vita-chips-window.png', [Drawing.Imaging.ImageFormat]::Png)
 $graphics.Dispose()
 $bitmap.Dispose()
 $target
+
+# Emulator validation is complete once the evidence image is written. Keep the
+# developer's Windows desktop clean and avoid accumulating installer or game
+# instances between runs.
+Get-Process Vita3K -ErrorAction SilentlyContinue |
+    Where-Object Path -EQ 'D:\Vita3K\Vita3K.exe' |
+    Stop-Process -Force

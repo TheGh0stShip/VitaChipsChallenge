@@ -6,17 +6,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SCREEN_WIDTH 960
-#define SCREEN_HEIGHT 544
+#define WINDOW_WIDTH 960
+#define WINDOW_HEIGHT 544
+#define LOGICAL_WIDTH 640
+#define LOGICAL_HEIGHT 363
 #define VIEW_TILES 9
 #define SOURCE_TILE_SIZE 32
-#define BOARD_TILE_SIZE 60
-#define BOARD_X 2
-#define BOARD_Y 2
-#define INFO_X 623
-#define INFO_Y 22
-#define INFO_SCALE_NUMERATOR 5
-#define INFO_SCALE_DENOMINATOR 3
+#define BOARD_TILE_SIZE 32
+#define BOARD_X 32
+#define BOARD_Y 34
+#define INFO_X 340
+#define INFO_Y 31
 
 typedef struct vcc_graphics {
     SDL_Texture *tiles;
@@ -166,8 +166,8 @@ static void draw_background(SDL_Renderer *renderer, SDL_Texture *background)
 {
     int x;
     int y;
-    for (y = 0; y < SCREEN_HEIGHT; y += 196) {
-        for (x = 0; x < SCREEN_WIDTH; x += 237) {
+    for (y = 0; y < LOGICAL_HEIGHT; y += 196) {
+        for (x = 0; x < LOGICAL_WIDTH; x += 237) {
             SDL_Rect target = {x, y, 237, 196};
             (void)SDL_RenderCopy(renderer, background, NULL, &target);
         }
@@ -187,6 +187,22 @@ static void draw_board(SDL_Renderer *renderer, const vcc_graphics *graphics,
         camera_x = (int)VCC_MAP_WIDTH - VIEW_TILES;
     if (camera_y > (int)VCC_MAP_HEIGHT - VIEW_TILES)
         camera_y = (int)VCC_MAP_HEIGHT - VIEW_TILES;
+    {
+        SDL_Rect surround = {BOARD_X - 6, BOARD_Y - 6,
+            VIEW_TILES * BOARD_TILE_SIZE + 12, VIEW_TILES * BOARD_TILE_SIZE + 12};
+        SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255);
+        (void)SDL_RenderFillRect(renderer, &surround);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        (void)SDL_RenderDrawLine(renderer, surround.x, surround.y,
+            surround.x + surround.w - 1, surround.y);
+        (void)SDL_RenderDrawLine(renderer, surround.x, surround.y,
+            surround.x, surround.y + surround.h - 1);
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+        (void)SDL_RenderDrawLine(renderer, surround.x + surround.w - 1, surround.y,
+            surround.x + surround.w - 1, surround.y + surround.h - 1);
+        (void)SDL_RenderDrawLine(renderer, surround.x, surround.y + surround.h - 1,
+            surround.x + surround.w - 1, surround.y + surround.h - 1);
+    }
     for (y = 0; y < VIEW_TILES; ++y) {
         for (x = 0; x < VIEW_TILES; ++x) {
             uint8_t map_x = (uint8_t)(camera_x + x);
@@ -206,11 +222,6 @@ static void draw_board(SDL_Renderer *renderer, const vcc_graphics *graphics,
     }
 }
 
-static int info_coordinate(int local)
-{
-    return local * INFO_SCALE_NUMERATOR / INFO_SCALE_DENOMINATOR;
-}
-
 static void draw_number(SDL_Renderer *renderer, SDL_Texture *digits,
     unsigned value, int x, int y, int yellow)
 {
@@ -218,11 +229,11 @@ static void draw_number(SDL_Renderer *renderer, SDL_Texture *digits,
     if (value > 999U) value = 999U;
     for (divisor = 100U; divisor != 0U; divisor /= 10U) {
         unsigned digit = (value / divisor) % 10U;
-        unsigned frame = digit + (yellow ? 0U : 12U);
+        unsigned frame = digit + (yellow ? 2U : 14U);
         SDL_Rect source = {0, (int)frame * 23, 17, 23};
-        SDL_Rect target = {x, y, info_coordinate(17), info_coordinate(23)};
+        SDL_Rect target = {x, y, 17, 23};
         (void)SDL_RenderCopy(renderer, digits, &source, &target);
-        x += info_coordinate(17);
+        x += 17;
     }
 }
 
@@ -231,9 +242,8 @@ static void draw_inventory(SDL_Renderer *renderer, const vcc_graphics *graphics,
 {
     unsigned slot;
     for (slot = 0U; slot < 8U; ++slot) {
-        SDL_Rect box = {INFO_X + info_coordinate(12 + (int)(slot % 4U) * 32),
-            INFO_Y + info_coordinate(217 + (int)(slot / 4U) * 32),
-            info_coordinate(32), info_coordinate(32)};
+        SDL_Rect box = {INFO_X + 12 + (int)(slot % 4U) * 32,
+            INFO_Y + 217 + (int)(slot / 4U) * 32, 32, 32};
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         (void)SDL_RenderDrawLine(renderer, box.x, box.y, box.x + box.w - 1, box.y);
         (void)SDL_RenderDrawLine(renderer, box.x, box.y, box.x, box.y + box.h - 1);
@@ -255,17 +265,17 @@ static void draw_inventory(SDL_Renderer *renderer, const vcc_graphics *graphics,
 static void draw_info(SDL_Renderer *renderer, const vcc_graphics *graphics,
     const vcc_game *game)
 {
-    SDL_Rect target = {INFO_X, INFO_Y, info_coordinate(154), info_coordinate(300)};
+    SDL_Rect target = {INFO_X, INFO_Y, 154, 300};
     unsigned seconds = game->time_left_ticks == 0U ? 0U
         : (game->time_left_ticks + 19U) / 20U;
     (void)SDL_RenderCopy(renderer, graphics->info, NULL, &target);
     draw_number(renderer, graphics->digits, game->level->number,
-        INFO_X + info_coordinate(44), INFO_Y + info_coordinate(34), 0);
+        INFO_X + 47, INFO_Y + 37, 0);
     draw_number(renderer, graphics->digits, seconds,
-        INFO_X + info_coordinate(44), INFO_Y + info_coordinate(99),
+        INFO_X + 47, INFO_Y + 99,
         game->level->time_limit == 0U || seconds <= 15U);
     draw_number(renderer, graphics->digits, game->chips_left,
-        INFO_X + info_coordinate(44), INFO_Y + info_coordinate(189), 0);
+        INFO_X + 47, INFO_Y + 189, 0);
     draw_inventory(renderer, graphics, game);
 }
 
@@ -309,9 +319,9 @@ int main(void)
     (void)SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) goto cleanup;
     window = SDL_CreateWindow("Vita Chips Challenge", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+        SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
     renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) : NULL;
-    if (!renderer || SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT) != 0) goto cleanup;
+    if (!renderer || SDL_RenderSetLogicalSize(renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT) != 0) goto cleanup;
     graphics.tiles = load_bmp(renderer, "app0:/data/OBJ32_4_RGB.bmp");
     graphics.actors = load_masked_tiles(renderer);
     graphics.background = load_bmp(renderer, "app0:/data/BACKGROUND_RGB.bmp");
@@ -328,9 +338,11 @@ int main(void)
             vcc_direction direction = event_direction(&event);
             if (event.type == SDL_QUIT) running = 0;
             if (direction != VCC_DIR_NONE) (void)vcc_game_move(&game, direction);
-            if ((event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_r)
+            if ((event.type == SDL_KEYDOWN
+                    && (event.key.keysym.sym == SDLK_r
+                        || event.key.keysym.sym == SDLK_RETURN))
                 || (event.type == SDL_CONTROLLERBUTTONDOWN
-                    && event.cbutton.button == SDL_CONTROLLER_BUTTON_X)) {
+                    && event.cbutton.button == SDL_CONTROLLER_BUTTON_A)) {
                 if (game.status == VCC_WON && level_index + 1U < dat->level_count)
                     ++level_index;
                 (void)vcc_game_start(&game, &dat->levels[level_index]);
