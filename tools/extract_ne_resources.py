@@ -33,6 +33,7 @@ def main() -> None:
     parser.add_argument("executable", type=Path)
     parser.add_argument("inventory", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--prefix", default="")
     args = parser.parse_args()
 
     executable = args.executable.read_bytes()
@@ -40,14 +41,21 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
     extracted = 0
     for resource in inventory["resources"]:
-        if resource["type"] != 2:
+        if resource["type"] not in (2, 3):
             continue
         offset = int(resource["file_offset"])
         size = int(resource["size"])
         end = offset + size
         if end > len(executable):
             raise ValueError(f"resource {resource['id']} extends beyond executable")
-        output = args.output / f"{safe_name(resource['id'])}.bmp"
+        if resource["type"] == 3:
+            # RT_ICON: a DIB of doubled height holding the colour image and
+            # the AND mask; kept raw for prepare_runtime_assets.py.
+            output = args.output / f"{args.prefix}ICON_{safe_name(resource['id'])}.dib"
+            output.write_bytes(executable[offset:end])
+            print(output)
+            continue
+        output = args.output / f"{args.prefix}{safe_name(resource['id'])}.bmp"
         output.write_bytes(dib_to_bmp(executable[offset:end]))
         print(output)
         extracted += 1

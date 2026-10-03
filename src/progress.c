@@ -12,6 +12,15 @@ void vcc_progress_reset(vcc_progress *progress)
     memset(progress, 0, sizeof *progress);
     progress->highest_level = 1U;
     progress->current_level = 1U;
+    progress->color = 1;
+    progress->midi_files = 3;
+}
+
+void vcc_progress_new_game(vcc_progress *progress)
+{
+    memset(progress->levels, 0, sizeof progress->levels);
+    progress->highest_level = 1U;
+    progress->current_score = 0;
 }
 
 static int key_equals(const char *key, size_t length, const char *name)
@@ -89,6 +98,14 @@ void vcc_progress_parse(vcc_progress *progress, const char *text, size_t size)
                 progress->current_level = (uint16_t)strtoul(value, NULL, 10);
             } else if (key_equals(text, key_length, "Current Score")) {
                 progress->current_score = (int32_t)strtol(value, NULL, 10);
+            } else if (key_equals(text, key_length, "MIDI")) {
+                progress->music = (int16_t)strtol(value, NULL, 10);
+            } else if (key_equals(text, key_length, "Sounds")) {
+                progress->sounds = (int16_t)strtol(value, NULL, 10);
+            } else if (key_equals(text, key_length, "Color")) {
+                progress->color = (int16_t)strtol(value, NULL, 10);
+            } else if (key_equals(text, key_length, "Number of Midi Files")) {
+                progress->midi_files = (int16_t)strtol(value, NULL, 10);
             } else if (key_length > 5U && key_equals(text, 5U, "Level")) {
                 char number[8];
                 unsigned long level;
@@ -119,6 +136,10 @@ size_t vcc_progress_format(const vcc_progress *progress, char *out, size_t capac
     EMIT("Highest Level=%u\r\n", (unsigned)progress->highest_level);
     EMIT("Current Level=%u\r\n", (unsigned)progress->current_level);
     EMIT("Current Score=%ld\r\n", (long)progress->current_score);
+    EMIT("MIDI=%d\r\n", (int)progress->music);
+    EMIT("Sounds=%d\r\n", (int)progress->sounds);
+    EMIT("Color=%d\r\n", (int)progress->color);
+    EMIT("Number of Midi Files=%d\r\n", (int)progress->midi_files);
     for (level = 1U; level <= VCC_MAX_LEVELS; ++level) {
         const vcc_level_progress *entry = &progress->levels[level];
         if (entry->record.present)

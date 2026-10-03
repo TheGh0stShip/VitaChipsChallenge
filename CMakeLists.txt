@@ -11,8 +11,11 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-add_library(vcc_core STATIC src/dat.c src/game.c src/score.c src/progress.c)
+add_library(vcc_core STATIC src/dat.c src/game.c src/score.c src/progress.c src/music.c)
 target_include_directories(vcc_core PUBLIC include)
+if(NOT VCC_VITA)
+  target_link_libraries(vcc_core PUBLIC m)
+endif()
 target_compile_options(vcc_core PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
 
@@ -62,12 +65,18 @@ if(VCC_VITA)
   endif()
   find_package(SDL2 CONFIG REQUIRED)
   find_package(SDL2_ttf CONFIG REQUIRED)
-  add_executable(vita_chips src/vita_main.c src/ui.c)
+  add_executable(vita_chips src/vita_main.c src/ui.c src/help.c)
   target_link_libraries(vita_chips PRIVATE vcc_core SDL2_ttf::SDL2_ttf-static
     SDL2::SDL2 freetype png bz2 z)
   target_compile_options(vita_chips PRIVATE
     -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
   vita_create_self(vita_chips.self vita_chips)
+  file(GLOB VCC_HELP_FILES "${CMAKE_CURRENT_BINARY_DIR}/assets/help/*")
+  set(VCC_HELP_VPK_FILES)
+  foreach(help_file ${VCC_HELP_FILES})
+    get_filename_component(help_name "${help_file}" NAME)
+    list(APPEND VCC_HELP_VPK_FILES FILE "${help_file}" "data/help/${help_name}")
+  endforeach()
   vita_create_vpk(VitaChipsChallenge.vpk "VITA00001" vita_chips.self
     VERSION "01.00"
     NAME "Vita Chips Challenge"
@@ -86,6 +95,11 @@ if(VCC_VITA)
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/INFOWND_RGB.bmp" "data/INFOWND_RGB.bmp"
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/200_RGB.bmp" "data/200_RGB.bmp"
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/CHIPEND_RGB.bmp" "data/CHIPEND_RGB.bmp"
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_1_RGB.bmp" "data/OBJ32_1_RGB.bmp"
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/ICON_RGB.bmp" "data/ICON_RGB.bmp"
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/WEP_666_RGB.bmp" "data/WEP_666_RGB.bmp"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/music/GENMIDI.op2" "data/GENMIDI.op2"
+    ${VCC_HELP_VPK_FILES}
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/BLIP2.WAV" "data/BLIP2.WAV"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/BUMMER.WAV" "data/BUMMER.WAV"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CLICK3.WAV" "data/CLICK3.WAV"

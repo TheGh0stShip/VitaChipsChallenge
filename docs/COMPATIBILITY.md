@@ -37,12 +37,26 @@ results.
 | Sliding and force floors | Reconstructed | Slip list processing (`3:13DE`), `7:0636` direction rules including ice corners and random force floors, and bounce handling follow the original. Needs trace confirmation. |
 | Traps and clone machines | Reconstructed | Trap records keep the DAT fifth word as their held state; `3:21AA`, `3:211A`, and `3:2442` are reproduced. Needs trace confirmation. |
 | Teleports | Reconstructed | `3:276A` reverse reading-order search with per-mover acceptance rules. Needs trace confirmation. |
-| Progress, passwords, scores | Partial | Level Complete dialog and scoring (`6:0422`), attempt counting and the skip-level prompt (`4:0356`), and `ENTPACK.INI`-format progress (`2:198E`-`2:1C9F`) are reconstructed. Password entry, Go To, and Best Times dialogs remain absent. |
-| Menus and messages | Partial | Death messages (`2:0B9A`), the trouble prompt, and Level Complete use Windows 3.1 style dialogs from the original templates. The hint window (`2:0C1A`, `2:2BBE`) and the level 50–140 interludes are reconstructed. Pause, menus, and the animated ending (`7:0A74`) are absent; the ending currently shows only its three messages. |
+| Progress, passwords, scores | Reconstructed | Level Complete scoring (`6:0422`), attempts and the skip prompt (`4:0356`), `ENTPACK.INI` progress and options (`2:198E`-`2:1C9F`, `2:18DE`), the password gate (`4:115C`, `4:0E48`, DLG_PASSWORD `4:1016`), Go To (`6:0000`, `4:0EAA`), Best Times (`6:018E`), and New Game (`2:1DAE`). |
+| Menus and messages | Reconstructed | CHIPSMENU with its accelerators and every command (`2:1E28`); death, trouble, completion, interlude, and ending messages; the level title and password overlay (`2:1374`); the paused board (`2:10DE`); the hint window; and WEP4UTIL's About dialog. Win3.1 menus and dialogs are redrawn, not the native ones. |
 | Sound effects | Partial | The 15-entry sound table (`DS:0336`, `DS:040A`) and interrupting `sndPlaySound` semantics (`8:056C`) are reproduced. System sounds absent from the archive stay silent as with `SND_NODEFAULT`. Some engine triggers await the engine reconstruction. |
-| Music | Missing | Both original MIDI resources are packaged but playback and the Background Music option are absent. |
-| Controls | Partial | D-pad movement and Cross restart/proceed exist. Pause, menus, password entry, help, and controller repeat are absent. |
+| Music | Implemented | The level's song (`level mod files`, `8:0308`) loops and follows Pause and Options. Playback uses a built-in OPL2-model FM synthesizer with Freedoom's GENMIDI bank, standing in for the Windows MIDI Mapper and FM driver; exact timbre depends on the original sound hardware. |
+| Controls | Implemented | Arrows with Windows-style repeat, mouse or touch walking (`2:27EA`), menus (Start), Pause (Select), Restart (Triangle), Previous and Next (L and R), dialog navigation, and the Vita IME for text fields. |
 | ARM ABI release gate | Partial | VitaSDK produces ARMv7 code. Final dependency float ABI inspection and physical Vita/PSTV validation remain required. |
 
 No release should be described as gold while any required row is Partial or
 Missing.
+
+## Help
+
+`tools/convert_help.py` converts the supplied WinHelp 3.0 `CHIPS.HLP`
+(internal file system, `|Phrases`, `|TOPIC`, `|FONT`, `|TOMAP`, keyword
+B-tree, and RLE pictures) at build time. The viewer shows its topics with
+the original fonts, pictures, jumps, and popups, opened by the HELP_KEY
+keywords the game passes to WEPHELP. Help on Help needs Windows'
+`WINHELP.HLP`, which is not part of the archive, so it opens the contents.
+
+## Defaults
+
+Like the original (`2:18DE`), a fresh profile starts with Sound Effects and
+Background Music off. Turn them on from the Options menu.

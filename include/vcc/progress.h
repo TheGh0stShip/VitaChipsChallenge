@@ -21,10 +21,17 @@ typedef struct vcc_progress {
     uint16_t highest_level;   /* "Highest Level" */
     uint16_t current_level;   /* "Current Level" */
     int32_t current_score;    /* "Current Score" */
+    int16_t music;            /* "MIDI", default 0 (2:18DE) */
+    int16_t sounds;           /* "Sounds", default 0 */
+    int16_t color;            /* "Color", default 1 */
+    int16_t midi_files;       /* "Number of Midi Files", default 3 */
     vcc_level_progress levels[VCC_MAX_LEVELS + 1U];  /* indexed by number */
 } vcc_progress;
 
 void vcc_progress_reset(vcc_progress *progress);
+/* New Game (2:1DAE): forgets every level record and password and the
+ * score, keeping the options. */
+void vcc_progress_new_game(vcc_progress *progress);
 /* Parses INI text; unknown sections and keys are ignored. */
 void vcc_progress_parse(vcc_progress *progress, const char *text, size_t size);
 /* Writes INI text. Returns the length needed, excluding the terminator. */

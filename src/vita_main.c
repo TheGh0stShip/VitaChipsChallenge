@@ -1,8 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Vita front end: the CHIPS.EXE main window, board, information panel,
+ * menus, dialogs, sound, and music, laid out as the original lays out its
+ * client area (2:0946) under a Windows 3.1 menu bar. */
 #include "vcc/dat.h"
 #include "vcc/game.h"
+#include "vcc/music.h"
 #include "vcc/progress.h"
 #include "vcc/score.h"
+#include "help.h"
 #include "ui.h"
 #include <SDL2/SDL.h>
 #include <stdint.h>
@@ -12,43 +17,40 @@
 
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 544
-#define LOGICAL_WIDTH 640
-#define LOGICAL_HEIGHT 363
 #define VIEW_TILES 9
-#define SOURCE_TILE_SIZE 32
-#define BOARD_TILE_SIZE 32
+#define TILE 32
+#define CLIENT_Y UI_MENU_BAR_H
+/* Board and panel origins from 2:0946 with DS:169E = DS:16A0 = 32 (5:0033,
+ * screens taller than 350 lines). */
 #define BOARD_X 32
-#define BOARD_Y 34
-#define INFO_X 340
-#define INFO_Y 31
+#define BOARD_Y (CLIENT_Y + 32)
+#define BOARD_SIZE (VIEW_TILES * TILE)
+#define INFO_X (32 + 0x133)
+#define INFO_Y (CLIENT_Y + 32 - 6)
 
-typedef struct vcc_graphics {
-    SDL_Texture *tiles;
-    SDL_Texture *actors;
-    SDL_Texture *background;
-    SDL_Texture *info;
-    SDL_Texture *digits;
-} vcc_graphics;
+#define SAVE_DIR "ux0:data/VitaChipsChallenge"
+#define SAVE_PATH SAVE_DIR "/entpack.ini"
+#define CAPTION "Chip's Challenge"  /* DS:0068 */
+#define TICK_MS 110U                /* timer 1, 2:16FA */
+#define REPEAT_DELAY_MS 250U        /* KeyboardDelay 0 (2:24D0) */
+#define REPEAT_RATE_MS 33U
+#define AUDIO_RATE 22050
 
-typedef struct vcc_sound {
-    uint8_t *data;
-    uint32_t length;
-} vcc_sound;
-
-typedef struct vcc_audio {
-    SDL_AudioDeviceID device;
-    SDL_AudioSpec format;
-    vcc_sound sounds[VCC_SOUND_COUNT];
-} vcc_audio;
-
-/* Default files from DS:040A, indexed by vcc_sound_id. CHIMES, HIT3, CLICK1,
- * and BELL are Windows system sounds absent from the game archive; with
- * SND_NODEFAULT (8:05AA) a missing file plays nothing. */
-static const char *const sound_files[VCC_SOUND_COUNT] = {
-    "BLIP2.WAV", "DOOR.WAV", "BUMMER.WAV", "DITTY1.WAV", NULL,
-    "OOF3.WAV", "STRIKE.WAV", NULL, "CLICK3.WAV", "POP2.WAV", "WATER2.WAV",
-    NULL, "TELEPORT.WAV", NULL, NULL
+/* Menu command identifiers from the CHIPSMENU resource. */
+enum {
+    CMD_ABOUT = 100, CMD_EXIT = 106, CMD_HELP_CONTENTS = 107, CMD_HELP_USE = 109,
+    CMD_NEXT = 110, CMD_PREVIOUS = 111, CMD_RESTART = 113, CMD_NEW_GAME = 114,
+    CMD_BEST_TIMES = 115, CMD_PAUSE = 116, CMD_MUSIC = 117, CMD_SOUND = 118,
+    CMD_GOTO = 119, CMD_HELP_PLAY = 120, CMD_HELP_COMMANDS = 121, CMD_COLOR = 122
 };
+
+static const SDL_Color black = {0, 0, 0, 255};
+static const SDL_Color red = {255, 0, 0, 255};
+static const SDL_Color yellow = {255, 255, 0, 255};
+static const SDL_Color cyan = {0, 255, 255, 255};
+static const SDL_Color light = {192, 192, 192, 255};
+
+/* ---- Files ---------------------------------------------------------- */
 
 static uint8_t *read_file(const char *path, size_t *size)
 {
@@ -60,309 +62,205 @@ static uint8_t *read_file(const char *path, size_t *size)
         if (file) fclose(file);
         return NULL;
     }
-    data = malloc((size_t)length);
+    data = malloc((size_t)length + 1U);
     if (!data || fread(data, 1, (size_t)length, file) != (size_t)length) {
         free(data);
         fclose(file);
         return NULL;
     }
     fclose(file);
+    data[length] = 0U;
     *size = (size_t)length;
     return data;
 }
 
-static SDL_Texture *load_bmp(SDL_Renderer *renderer, const char *path)
+static SDL_Texture *load_bmp(SDL_Renderer *renderer, const char *path, int keyed)
 {
     SDL_Surface *surface = SDL_LoadBMP(path);
-    SDL_Texture *texture = surface ? SDL_CreateTextureFromSurface(renderer, surface) : NULL;
-    SDL_FreeSurface(surface);
-    return texture;
-}
-
-static SDL_Texture *load_masked_tiles(SDL_Renderer *renderer)
-{
-    SDL_Surface *surface = SDL_LoadBMP("app0:/data/OBJ32_MASKED.bmp");
     SDL_Texture *texture;
     if (!surface) return NULL;
-    (void)SDL_SetColorKey(surface, SDL_TRUE,
-        SDL_MapRGB(surface->format, 1U, 2U, 3U));
+    if (keyed) (void)SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, 1U, 2U, 3U));
     texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
     return texture;
 }
 
-static int load_sound(vcc_audio *audio, unsigned index)
+/* ---- Audio ---------------------------------------------------------- */
+
+/* Default files from DS:040A, indexed by vcc_sound_id. CHIMES, HIT3, CLICK1,
+ * and BELL are Windows system sounds absent from the game archive; with
+ * SND_NODEFAULT (8:05AA) a missing file plays nothing. */
+static const char *const sound_files[VCC_SOUND_COUNT] = {
+    "BLIP2.WAV", "DOOR.WAV", "BUMMER.WAV", "DITTY1.WAV", NULL,
+    "OOF3.WAV", "STRIKE.WAV", NULL, "CLICK3.WAV", "POP2.WAV", "WATER2.WAV",
+    NULL, "TELEPORT.WAV", NULL, NULL
+};
+
+/* Music list (DS:04A6); missing files drop out of the rotation (8:0308). */
+static const char *const music_files[] = {"CHIP01.MID", "CHIP02.MID", "CANYON.MID"};
+
+typedef struct sample {
+    int16_t *data;
+    size_t length;
+} sample;
+
+typedef struct audio {
+    SDL_AudioDeviceID device;
+    sample sounds[VCC_SOUND_COUNT];
+    const sample *playing;
+    size_t position;
+    vcc_music *music;
+    uint8_t *songs[3];
+    size_t song_sizes[3];
+    int song_count;
+} audio;
+
+static void audio_callback(void *userdata, Uint8 *stream, int length)
+{
+    audio *a = userdata;
+    int16_t *out = (int16_t *)stream;
+    size_t frames = (size_t)length / sizeof(int16_t);
+    size_t index;
+    if (a->music && vcc_music_playing(a->music)) vcc_music_render(a->music, out, frames);
+    else memset(out, 0, (size_t)length);
+    for (index = 0U; index < frames && a->playing; ++index) {
+        int value = out[index] + a->playing->data[a->position++];
+        out[index] = (int16_t)(value > 32767 ? 32767 : (value < -32768 ? -32768 : value));
+        if (a->position >= a->playing->length) a->playing = NULL;
+    }
+}
+
+static int load_sound(sample *out, const char *name)
 {
     char path[64];
-    SDL_AudioSpec source_format;
-    uint8_t *source = NULL;
-    uint32_t source_length = 0U;
-    SDL_AudioCVT conversion;
-    int result;
-    if (!sound_files[index]) return 1;
-    (void)snprintf(path, sizeof path, "app0:/data/%s", sound_files[index]);
-    if (!SDL_LoadWAV(path, &source_format, &source, &source_length)) return 0;
-    result = SDL_BuildAudioCVT(&conversion, source_format.format, source_format.channels,
-        source_format.freq, audio->format.format, audio->format.channels, audio->format.freq);
-    if (result < 0) {
-        SDL_FreeWAV(source);
+    SDL_AudioSpec source;
+    uint8_t *data = NULL;
+    uint32_t length = 0U;
+    SDL_AudioCVT cvt;
+    (void)snprintf(path, sizeof path, "app0:/data/%s", name);
+    if (!SDL_LoadWAV(path, &source, &data, &length)) return 0;
+    if (SDL_BuildAudioCVT(&cvt, source.format, source.channels, source.freq,
+            AUDIO_S16SYS, 1, AUDIO_RATE) < 0) {
+        SDL_FreeWAV(data);
         return 0;
     }
-    conversion.len = (int)source_length;
-    conversion.buf = SDL_malloc((size_t)conversion.len * (size_t)conversion.len_mult);
-    if (!conversion.buf) {
-        SDL_FreeWAV(source);
-        return 0;
-    }
-    SDL_memcpy(conversion.buf, source, source_length);
-    SDL_FreeWAV(source);
-    if (result != 0 && SDL_ConvertAudio(&conversion) != 0) {
-        SDL_free(conversion.buf);
-        return 0;
-    }
-    if (result == 0) conversion.len_cvt = conversion.len;
-    audio->sounds[index].data = conversion.buf;
-    audio->sounds[index].length = (uint32_t)conversion.len_cvt;
+    cvt.len = (int)length;
+    cvt.buf = SDL_malloc((size_t)cvt.len * (size_t)cvt.len_mult);
+    if (!cvt.buf) { SDL_FreeWAV(data); return 0; }
+    SDL_memcpy(cvt.buf, data, length);
+    SDL_FreeWAV(data);
+    if (cvt.needed && SDL_ConvertAudio(&cvt) != 0) { SDL_free(cvt.buf); return 0; }
+    out->data = (int16_t *)cvt.buf;
+    out->length = (size_t)(cvt.needed ? cvt.len_cvt : cvt.len) / sizeof(int16_t);
     return 1;
 }
 
-static int audio_init(vcc_audio *audio)
+static int audio_init(audio *a)
 {
     SDL_AudioSpec desired;
+    SDL_AudioSpec obtained;
     unsigned index;
-    SDL_zero(*audio);
+    size_t bank_size = 0U;
+    uint8_t *bank;
     SDL_zero(desired);
-    desired.freq = 11025;
-    desired.format = AUDIO_U8;
+    desired.freq = AUDIO_RATE;
+    desired.format = AUDIO_S16SYS;
     desired.channels = 1;
-    desired.samples = 512;
-    audio->device = SDL_OpenAudioDevice(NULL, 0, &desired, &audio->format, 0);
-    if (audio->device == 0U) return 0;
-    for (index = 0U; index < VCC_SOUND_COUNT; ++index) {
-        if (!load_sound(audio, index)) return 0;
+    desired.samples = 1024;
+    desired.callback = audio_callback;
+    desired.userdata = a;
+    for (index = 0U; index < VCC_SOUND_COUNT; ++index)
+        if (sound_files[index]) (void)load_sound(&a->sounds[index], sound_files[index]);
+    bank = read_file("app0:/data/GENMIDI.op2", &bank_size);
+    if (bank) {
+        a->music = vcc_music_create(bank, bank_size, AUDIO_RATE);
+        free(bank);
     }
-    SDL_PauseAudioDevice(audio->device, 0);
+    for (index = 0U; index < 3U; ++index) {
+        char path[64];
+        (void)snprintf(path, sizeof path, "app0:/data/%s", music_files[index]);
+        a->songs[a->song_count] = read_file(path, &a->song_sizes[a->song_count]);
+        if (a->songs[a->song_count]) ++a->song_count;
+    }
+    a->device = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
+    if (a->device == 0U) return 0;
+    SDL_PauseAudioDevice(a->device, 0);
     return 1;
 }
 
 /* sndPlaySound at 8:056C: SND_ASYNC replaces the sound playing, while the
  * SND_NOSTOP form used for buttons pressed by monsters and blocks yields. */
-static void audio_play(vcc_audio *audio, vcc_sound_id id, int interrupt)
+static void audio_play(audio *a, vcc_sound_id id, int interrupt)
 {
-    unsigned index = (unsigned)id;
-    if (audio->device != 0U && index < VCC_SOUND_COUNT && audio->sounds[index].data) {
-        if (!interrupt && SDL_GetQueuedAudioSize(audio->device) != 0U) return;
-        SDL_ClearQueuedAudio(audio->device);
-        (void)SDL_QueueAudio(audio->device, audio->sounds[index].data,
-            audio->sounds[index].length);
+    const sample *s = &a->sounds[id];
+    if (a->device == 0U || !s->data) return;
+    SDL_LockAudioDevice(a->device);
+    if (interrupt || !a->playing) {
+        a->playing = s;
+        a->position = 0U;
     }
+    SDL_UnlockAudioDevice(a->device);
 }
 
-static void audio_quit(vcc_audio *audio)
+/* 8:0308: the level's song is file (level mod count), restarted. */
+static void music_start(audio *a, int level)
+{
+    if (!a->music || a->song_count == 0 || a->device == 0U) return;
+    SDL_LockAudioDevice(a->device);
+    if (vcc_music_load(a->music, a->songs[level % a->song_count],
+            a->song_sizes[level % a->song_count]))
+        vcc_music_play(a->music);
+    SDL_UnlockAudioDevice(a->device);
+}
+
+/* 8:02D4 */
+static void music_stop(audio *a)
+{
+    if (!a->music || a->device == 0U) return;
+    SDL_LockAudioDevice(a->device);
+    vcc_music_stop(a->music);
+    SDL_UnlockAudioDevice(a->device);
+}
+
+static void audio_quit(audio *a)
 {
     unsigned index;
-    if (audio->device != 0U) SDL_CloseAudioDevice(audio->device);
-    for (index = 0U; index < VCC_SOUND_COUNT; ++index) SDL_free(audio->sounds[index].data);
+    if (a->device != 0U) SDL_CloseAudioDevice(a->device);
+    for (index = 0U; index < VCC_SOUND_COUNT; ++index) SDL_free(a->sounds[index].data);
+    for (index = 0U; index < 3U; ++index) free(a->songs[index]);
+    vcc_music_destroy(a->music);
 }
 
-static void tile_rect(unsigned tile, SDL_Rect *rect)
-{
-    unsigned sprite = vcc_tile_sprite(tile);
-    rect->x = (int)(sprite / 16U) * SOURCE_TILE_SIZE;
-    rect->y = (int)(sprite % 16U) * SOURCE_TILE_SIZE;
-    rect->w = SOURCE_TILE_SIZE;
-    rect->h = SOURCE_TILE_SIZE;
-}
+/* ---- Application state --------------------------------------------- */
 
-static void draw_background(SDL_Renderer *renderer, SDL_Texture *background)
-{
-    int x;
-    int y;
-    for (y = 0; y < LOGICAL_HEIGHT; y += 196) {
-        for (x = 0; x < LOGICAL_WIDTH; x += 237) {
-            SDL_Rect target = {x, y, 237, 196};
-            (void)SDL_RenderCopy(renderer, background, NULL, &target);
-        }
-    }
-}
-
-/* ---- Presentation --------------------------------------------------- */
-
-/* 2:00C4: a creature, Chip, or item over non-floor ground is drawn masked
- * over that ground; anything else draws only the top tile. */
-static void draw_cell(SDL_Renderer *renderer, const vcc_graphics *graphics,
-    uint8_t top, uint8_t bottom, SDL_Rect *target)
-{
-    SDL_Rect source;
-    if (bottom != VCC_FLOOR && top >= 0x40 && top <= 0x6F) {
-        tile_rect(bottom, &source);
-        (void)SDL_RenderCopy(renderer, graphics->tiles, &source, target);
-        tile_rect(top, &source);
-        (void)SDL_RenderCopy(renderer, graphics->actors, &source, target);
-        return;
-    }
-    tile_rect(top, &source);
-    (void)SDL_RenderCopy(renderer, graphics->tiles, &source, target);
-}
-
-static void bevel(SDL_Renderer *renderer, SDL_Rect r, int depth, int raised)
-{
-    int i;
-    for (i = 0; i < depth; ++i) {
-        SDL_SetRenderDrawColor(renderer, raised ? 255 : 128, raised ? 255 : 128,
-            raised ? 255 : 128, 255);
-        (void)SDL_RenderDrawLine(renderer, r.x + i, r.y + i, r.x + r.w - 1 - i, r.y + i);
-        (void)SDL_RenderDrawLine(renderer, r.x + i, r.y + i, r.x + i, r.y + r.h - 1 - i);
-        SDL_SetRenderDrawColor(renderer, raised ? 128 : 255, raised ? 128 : 255,
-            raised ? 128 : 255, 255);
-        (void)SDL_RenderDrawLine(renderer, r.x + r.w - 1 - i, r.y + i,
-            r.x + r.w - 1 - i, r.y + r.h - 1 - i);
-        (void)SDL_RenderDrawLine(renderer, r.x + i, r.y + r.h - 1 - i,
-            r.x + r.w - 1 - i, r.y + r.h - 1 - i);
-    }
-}
-
-/* Viewport (4:04DC, 2:056E): nine tiles centred on Chip, clamped. */
-static void draw_board(SDL_Renderer *renderer, const vcc_graphics *graphics,
-    const vcc_game *game)
-{
-    int camera_x = game->chip_x - VIEW_TILES / 2;
-    int camera_y = game->chip_y - VIEW_TILES / 2;
-    int x;
-    int y;
-    SDL_Rect surround = {BOARD_X - 6, BOARD_Y - 6,
-        VIEW_TILES * BOARD_TILE_SIZE + 12, VIEW_TILES * BOARD_TILE_SIZE + 12};
-    if (camera_x < 0) camera_x = 0;
-    if (camera_y < 0) camera_y = 0;
-    if (camera_x > (int)VCC_MAP_WIDTH - VIEW_TILES) camera_x = (int)VCC_MAP_WIDTH - VIEW_TILES;
-    if (camera_y > (int)VCC_MAP_HEIGHT - VIEW_TILES) camera_y = (int)VCC_MAP_HEIGHT - VIEW_TILES;
-    SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255);
-    (void)SDL_RenderFillRect(renderer, &surround);
-    bevel(renderer, surround, 1, 1);
-    for (y = 0; y < VIEW_TILES; ++y) {
-        for (x = 0; x < VIEW_TILES; ++x) {
-            uint8_t mx = (uint8_t)(camera_x + x);
-            uint8_t my = (uint8_t)(camera_y + y);
-            SDL_Rect target = {BOARD_X + x * BOARD_TILE_SIZE, BOARD_Y + y * BOARD_TILE_SIZE,
-                BOARD_TILE_SIZE, BOARD_TILE_SIZE};
-            draw_cell(renderer, graphics, vcc_game_tile(game, mx, my, 0),
-                vcc_game_tile(game, mx, my, 1), &target);
-        }
-    }
-}
-
-/* Counter window paint, 2:29A6 and 9:00EA. The digit sheet "200" is a
- * bottom-up DIB of 24 frames, 17x23 each; frame k counted from the bottom
- * is digit k for k <= 9, blank for 10, and '-' for 11. Frames 0-11 are the
- * green set and 12-23 the yellow set. Leading zeros are blanked, and the
- * "dashes" flag draws "---" (used for untimed levels). */
-#define DIGIT_BLANK 10U
-#define DIGIT_DASH 11U
-
-static void draw_digit(SDL_Renderer *renderer, SDL_Texture *digits,
-    unsigned frame, int yellow, int x, int y)
-{
-    unsigned bottom_index = frame + (yellow ? 12U : 0U);
-    SDL_Rect source = {0, (int)(23U - bottom_index) * 23, 17, 23};
-    SDL_Rect target = {x, y, 17, 23};
-    (void)SDL_RenderCopy(renderer, digits, &source, &target);
-}
-
-static void draw_counter(SDL_Renderer *renderer, SDL_Texture *digits,
-    int value, int dashes, int yellow, int x, int y)
-{
-    unsigned v = value < 0 ? 0U : (unsigned)value;
-    unsigned hundreds;
-    unsigned tens;
-    unsigned ones;
-    if (dashes) {
-        hundreds = tens = ones = DIGIT_DASH;
-    } else {
-        ones = v % 10U;
-        tens = (v % 100U) / 10U;
-        hundreds = v / 100U;
-        if (hundreds == 0U) {
-            hundreds = DIGIT_BLANK;
-            if (tens == 0U) tens = DIGIT_BLANK;
-        }
-        if (hundreds > 9U && hundreds != DIGIT_BLANK) hundreds = 9U;
-    }
-    draw_digit(renderer, digits, hundreds, yellow, x, y);
-    draw_digit(renderer, digits, tens, yellow, x + 17, y);
-    draw_digit(renderer, digits, ones, yellow, x + 34, y);
-}
-
-static void draw_inventory(SDL_Renderer *renderer, const vcc_graphics *graphics,
-    const vcc_game *game)
-{
-    unsigned slot;
-    for (slot = 0U; slot < 8U; ++slot) {
-        SDL_Rect box = {INFO_X + 12 + (int)(slot % 4U) * 32,
-            INFO_Y + 217 + (int)(slot / 4U) * 32, 32, 32};
-        SDL_Rect source;
-        unsigned tile = VCC_FLOOR;
-        if (slot < 4U && game->keys[slot] != 0) tile = VCC_BLUE_KEY + slot;
-        if (slot >= 4U && game->boots[slot - 4U] != 0) tile = VCC_FLIPPERS + slot - 4U;
-        tile_rect(tile, &source);
-        (void)SDL_RenderCopy(renderer, graphics->tiles, &source, &box);
-    }
-}
-
-/* Hint window (2:0C1A, painted at 2:2BBE): replaces the chips counter and
- * inventory while Chip stands on a hint. */
-static void draw_hint(SDL_Renderer *renderer, const vcc_game *game)
-{
-    SDL_Rect frame = {INFO_X + 13, INFO_Y + 139, 128, 146};
-    SDL_Rect inside = {frame.x + 3, frame.y + 3, frame.w - 6, frame.h - 6};
-    char text[VCC_HINT_CAPACITY + 8];
-    bevel(renderer, frame, 3, 0);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    (void)SDL_RenderFillRect(renderer, &inside);
-    inside.x += 1; inside.y += 1; inside.w -= 2; inside.h -= 2;
-    (void)snprintf(text, sizeof text, "Hint: %s", game->level->hint);
-    ui_draw_hint(renderer, text, inside);
-}
-
-/* Counter flags follow 2:0CBE: time is yellow at 15 seconds or less (so an
- * untimed level shows yellow dashes), chips are yellow once none remain. */
-static void draw_info(SDL_Renderer *renderer, const vcc_graphics *graphics,
-    const vcc_game *game)
-{
-    SDL_Rect target = {INFO_X, INFO_Y, 154, 300};
-    (void)SDL_RenderCopy(renderer, graphics->info, NULL, &target);
-    draw_counter(renderer, graphics->digits, game->level->number, 0, 0,
-        INFO_X + 47, INFO_Y + 37);
-    draw_counter(renderer, graphics->digits, game->time_left,
-        game->level->time_limit == 0U, game->time_left <= 15, INFO_X + 47, INFO_Y + 99);
-    if (game->bottom[(size_t)game->chip_y * 32U + (size_t)game->chip_x] == VCC_HINT) {
-        draw_hint(renderer, game);
-        return;
-    }
-    draw_counter(renderer, graphics->digits, game->chips_left, 0,
-        game->chips_left == 0, INFO_X + 47, INFO_Y + 189);
-    draw_inventory(renderer, graphics, game);
-}
-
-/* ---- Session -------------------------------------------------------- */
-
-#define SAVE_DIR "ux0:data/VitaChipsChallenge"
-#define SAVE_PATH SAVE_DIR "/entpack.ini"
-#define CAPTION "Chip's Challenge"  /* DS:0068 */
-#define TICK_MS 110U                /* timer 1, 2:16FA */
-#define REPEAT_DELAY_MS 250U        /* KeyboardDelay 0 (2:24D0) */
-#define REPEAT_RATE_MS 33U
+typedef struct graphics {
+    SDL_Texture *tiles;
+    SDL_Texture *tiles_mono;
+    SDL_Texture *actors;
+    SDL_Texture *background;
+    SDL_Texture *info;
+    SDL_Texture *digits;
+    SDL_Texture *chipend;
+    SDL_Texture *banner;
+    SDL_Texture *icon;
+    SDL_Texture *board;  /* the ending draws here without clearing */
+    int background_w;
+    int background_h;
+} graphics;
 
 typedef struct app {
     SDL_Renderer *renderer;
-    vcc_graphics graphics;
-    vcc_audio audio;
-    ui_fonts fonts;
+    graphics gfx;
+    audio sound;
     vcc_dat *dat;
     vcc_game game;
     vcc_progress progress;
     vcc_attempts attempts;
     uint16_t level_index;
-    ui_dialog *modal;  /* dialog drawn over the board while a hook runs */
+    ui_menu_bar menu;
+    ui_dialog *modal;
+    int paused;          /* DS:0024 nesting count */
+    int ending;          /* state+0xA36 */
     int quit;
 } app;
 
@@ -398,60 +296,390 @@ static void progress_save(const vcc_progress *progress)
     (void)SDL_RWclose(file);
 }
 
+/* ---- Board and panel drawing --------------------------------------- */
+
+static SDL_Texture *tile_sheet(const app *a)
+{
+    /* 5:0112 picks OBJ32_4 (VGA), OBJ32_4E (EGA), or OBJ32_1 (monochrome);
+     * Options > Color off selects the monochrome set. */
+    if (!a->progress.color && a->gfx.tiles_mono) return a->gfx.tiles_mono;
+    return a->gfx.tiles;
+}
+
+static void tile_rect(unsigned tile, SDL_Rect *rect)
+{
+    rect->x = (int)(tile / 16U) * TILE;
+    rect->y = (int)(tile % 16U) * TILE;
+    rect->w = TILE;
+    rect->h = TILE;
+}
+
+/* 2:00C4: a creature, Chip, or item over non-floor ground is drawn masked
+ * over that ground; anything else draws only the top tile. */
+static void draw_cell(const app *a, uint8_t top, uint8_t bottom, const SDL_Rect *target)
+{
+    SDL_Rect source;
+    SDL_Texture *sheet = tile_sheet(a);
+    if (bottom != VCC_FLOOR && top >= 0x40 && top <= 0x6F) {
+        tile_rect(bottom, &source);
+        (void)SDL_RenderCopy(a->renderer, sheet, &source, target);
+        tile_rect(top, &source);
+        (void)SDL_RenderCopy(a->renderer, a->progress.color ? a->gfx.actors : sheet,
+            &source, target);
+        return;
+    }
+    tile_rect(top, &source);
+    (void)SDL_RenderCopy(a->renderer, sheet, &source, target);
+}
+
+/* 2:0DC6: the background bitmap tiled from the client origin, then the
+ * board frame (2:1006 light gray, 2:0F06 raised bevel of four). */
+static void draw_client(const app *a)
+{
+    int x;
+    int y;
+    SDL_Rect board = {BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE};
+    SDL_Rect ring = {BOARD_X - 2, BOARD_Y - 2, BOARD_SIZE + 4, BOARD_SIZE + 4};
+    for (y = CLIENT_Y; y < UI_SCREEN_H; y += a->gfx.background_h)
+        for (x = 0; x < UI_SCREEN_W; x += a->gfx.background_w) {
+            SDL_Rect target = {x, y, a->gfx.background_w, a->gfx.background_h};
+            (void)SDL_RenderCopy(a->renderer, a->gfx.background, NULL, &target);
+        }
+    ui_fill(a->renderer, ring, light);
+    ui_fill(a->renderer, board, black);
+    ui_bevel(a->renderer, ring, 4, 1);
+}
+
+static void camera(const vcc_game *game, int *cx, int *cy)
+{
+    *cx = game->chip_x - VIEW_TILES / 2;
+    *cy = game->chip_y - VIEW_TILES / 2;
+    if (*cx < 0) *cx = 0;
+    if (*cy < 0) *cy = 0;
+    if (*cx > 32 - VIEW_TILES) *cx = 32 - VIEW_TILES;
+    if (*cy > 32 - VIEW_TILES) *cy = 32 - VIEW_TILES;
+}
+
+/* Title and password shown while the level waits for its first key
+ * (2:1374): Arial bold from 16 points, yellow on black, in a raised box
+ * one line above the bottom of the board. */
+static void draw_level_title(const app *a)
+{
+    const vcc_level *level = a->game.level;
+    char title[96] = "";
+    char password[32] = "";
+    int points;
+    int has_title = level->title[0] != '\0';
+    int has_password = level->password[0] != '\0';
+    if (!has_title && !has_password) return;
+    if (has_title) (void)snprintf(title, sizeof title, " %s ", level->title);
+    if (has_password) (void)snprintf(password, sizeof password, " Password: %s ", level->password);
+    for (points = 16; points >= 6; --points) {
+        TTF_Font *font = ui_font(UI_FACE_ARIAL_BOLD, points, 0);
+        int line_h;
+        int width;
+        int lines = has_title + has_password;
+        int y;
+        SDL_Rect box;
+        if (!font) continue;
+        width = ui_text_width(font, title);
+        if (ui_text_width(font, password) > width) width = ui_text_width(font, password);
+        if (width + 8 > BOARD_SIZE && points > 6) continue;
+        line_h = TTF_FontHeight(font) * 2 / 3;
+        y = BOARD_SIZE - line_h * (has_title && has_password ? 3 : 2);
+        box.x = BOARD_X + (BOARD_SIZE - width) / 2;
+        box.y = BOARD_Y + y;
+        box.w = width;
+        box.h = lines * line_h;
+        ui_fill(a->renderer, box, black);
+        if (has_title)
+            ui_text(a->renderer, font, title,
+                BOARD_X + (BOARD_SIZE - ui_text_width(font, title)) / 2, box.y, yellow);
+        if (has_password)
+            ui_text(a->renderer, font, password,
+                BOARD_X + (BOARD_SIZE - ui_text_width(font, password)) / 2,
+                box.y + (has_title ? line_h : 0), yellow);
+        ui_bevel(a->renderer, box, 4, 1);
+        return;
+    }
+}
+
+static void draw_board(app *a)
+{
+    int cx;
+    int cy;
+    int x;
+    int y;
+    if (a->paused > 0) {
+        /* 2:10DE: the paused board is black with PAUSED in red Arial. */
+        TTF_Font *font = ui_font(UI_FACE_ARIAL, 32, 0);
+        int w = ui_text_width(font, "PAUSED");
+        int h = font ? TTF_FontHeight(font) * 2 / 3 : 0;
+        ui_text(a->renderer, font, "PAUSED", BOARD_X + (BOARD_SIZE - w) / 2,
+            BOARD_Y + (BOARD_SIZE - h) / 2, a->progress.color ? red : (SDL_Color){255, 255, 255, 255});
+        return;
+    }
+    if (a->ending > 0) {
+        SDL_Rect target = {BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE};
+        (void)SDL_RenderCopy(a->renderer, a->gfx.board, NULL, &target);
+        return;
+    }
+    camera(&a->game, &cx, &cy);
+    for (y = 0; y < VIEW_TILES; ++y)
+        for (x = 0; x < VIEW_TILES; ++x) {
+            SDL_Rect target = {BOARD_X + x * TILE, BOARD_Y + y * TILE, TILE, TILE};
+            draw_cell(a, vcc_game_tile(&a->game, (uint8_t)(cx + x), (uint8_t)(cy + y), 0),
+                vcc_game_tile(&a->game, (uint8_t)(cx + x), (uint8_t)(cy + y), 1), &target);
+        }
+    if (a->game.waiting) draw_level_title(a);
+}
+
+/* Counter window paint, 2:29A6 and 9:00EA. The digit sheet "200" is a
+ * bottom-up DIB of 24 frames, 17x23 each; frame k counted from the bottom
+ * is digit k for k <= 9, blank for 10, and '-' for 11. Frames 0-11 are the
+ * green set and 12-23 the yellow set. Digits are centred in the 55x29
+ * counter windows (2:0A3A) with leading zeros blanked. */
+static void draw_counter(const app *a, int value, int dashes, int yellow_digits, int y)
+{
+    unsigned v = value < 0 ? 0U : (unsigned)value;
+    unsigned digits[3];
+    int index;
+    if (dashes) {
+        digits[0] = digits[1] = digits[2] = 11U;
+    } else {
+        digits[2] = v % 10U;
+        digits[1] = (v % 100U) / 10U;
+        digits[0] = v / 100U;
+        if (digits[0] == 0U) {
+            digits[0] = 10U;
+            if (digits[1] == 0U) digits[1] = 10U;
+        }
+        if (digits[0] > 9U && digits[0] != 10U) digits[0] = 9U;
+    }
+    for (index = 0; index < 3; ++index) {
+        unsigned frame = digits[index] + (yellow_digits ? 12U : 0U);
+        SDL_Rect source = {0, (int)(23U - frame) * 23, 17, 23};
+        SDL_Rect target = {INFO_X + 45 + 2 + index * 17, INFO_Y + y + 3, 17, 23};
+        (void)SDL_RenderCopy(a->renderer, a->gfx.digits, &source, &target);
+    }
+}
+
+/* Inventory window (2:0AC5) at (13, 221), keys above boots. */
+static void draw_inventory(const app *a)
+{
+    unsigned slot;
+    for (slot = 0U; slot < 8U; ++slot) {
+        SDL_Rect box = {INFO_X + 13 + (int)(slot % 4U) * TILE,
+            INFO_Y + 221 + (int)(slot / 4U) * TILE, TILE, TILE};
+        SDL_Rect source;
+        unsigned tile = VCC_FLOOR;
+        if (slot < 4U && a->game.keys[slot] != 0) tile = VCC_BLUE_KEY + slot;
+        if (slot >= 4U && a->game.boots[slot - 4U] != 0) tile = VCC_FLIPPERS + slot - 4U;
+        tile_rect(tile, &source);
+        (void)SDL_RenderCopy(a->renderer, tile_sheet(a), &source, &box);
+    }
+}
+
+/* Hint window (2:0C1A, painted at 2:2BBE): replaces the chips counter and
+ * inventory while Chip stands on a hint. Arial bold italic in cyan,
+ * shrinking from 12 points to fit. */
+static void draw_hint(const app *a)
+{
+    SDL_Rect frame = {INFO_X + 13 + 3, INFO_Y + 139 + 3, 128 - 6, 146 - 6};
+    SDL_Rect text_rect = {frame.x + 1, frame.y + 1, frame.w - 2, frame.h - 2};
+    char text[VCC_HINT_CAPACITY + 8];
+    ui_bevel(a->renderer, frame, 3, 0);
+    ui_fill(a->renderer, frame, black);
+    (void)snprintf(text, sizeof text, "Hint: %s", a->game.level->hint);
+    ui_draw_fitted(a->renderer, UI_FACE_ARIAL_BOLD, 1, 12, text, text_rect,
+        a->progress.color ? cyan : (SDL_Color){255, 255, 255, 255});
+}
+
+/* Counter flags follow 2:0CBE: time is yellow at 15 seconds or less (so an
+ * untimed level shows yellow dashes), chips are yellow once none remain. */
+static void draw_info(const app *a)
+{
+    SDL_Rect target = {INFO_X, INFO_Y, 154, 300};
+    (void)SDL_RenderCopy(a->renderer, a->gfx.info, NULL, &target);
+    draw_counter(a, a->game.level->number, 0, 0, 34);
+    draw_counter(a, a->game.time_left, a->game.level->time_limit == 0U,
+        a->game.time_left <= 15, 96);
+    if (a->game.bottom[(size_t)a->game.chip_y * 32U + (size_t)a->game.chip_x] == VCC_HINT
+        && a->ending == 0) {
+        draw_hint(a);
+        return;
+    }
+    draw_counter(a, a->game.chips_left, 0, a->game.chips_left == 0, 186);
+    draw_inventory(a);
+}
+
+static void render_scene(app *a)
+{
+    SDL_SetRenderDrawColor(a->renderer, 0, 0, 0, 255);
+    SDL_RenderClear(a->renderer);
+    draw_client(a);
+    draw_board(a);
+    draw_info(a);
+    ui_menu_draw(a->renderer, &a->menu);
+    if (a->modal) ui_dialog_draw(a->renderer, a->modal);
+}
+
 static void render(app *a)
 {
-    SDL_SetRenderDrawColor(a->renderer, 0, 128, 0, 255);
-    SDL_RenderClear(a->renderer);
-    draw_background(a->renderer, a->graphics.background);
-    draw_board(a->renderer, &a->graphics, &a->game);
-    draw_info(a->renderer, &a->graphics, &a->game);
-    if (a->modal) ui_dialog_draw(a->renderer, &a->fonts, a->modal);
+    render_scene(a);
     SDL_RenderPresent(a->renderer);
 }
 
-/* DialogBox / MessageBox: a nested message loop that returns the chosen
- * button while the board stays as it was when the dialog opened. */
-static int run_modal(app *a, ui_dialog *dialog)
+static void help_backdrop_draw(void *context)
+{
+    render_scene(context);
+}
+
+/* ---- Modal dialogs -------------------------------------------------- */
+
+/* A dialog procedure: returns the EndDialog result, or -1 to stay open. */
+typedef int (*dialog_proc)(app *a, ui_dialog *dialog, const ui_notify *notify, void *data);
+
+static int simple_proc(app *a, ui_dialog *dialog, const ui_notify *notify, void *data)
+{
+    (void)a;
+    (void)dialog;
+    (void)data;
+    return notify->code == 0 ? notify->id : -1;
+}
+
+/* DialogBox: a nested message loop; the board keeps its state. */
+static int run_dialog(app *a, ui_dialog *dialog, dialog_proc proc, void *data)
 {
     ui_dialog *outer = a->modal;
-    int result = 0;
+    int result = -1;
     a->modal = dialog;
-    while (!result && !a->quit) {
+    while (result < 0 && !a->quit) {
         SDL_Event event;
-        while (SDL_PollEvent(&event)) {
+        while (result < 0 && SDL_PollEvent(&event)) {
+            ui_notify notify;
             if (event.type == SDL_QUIT) { a->quit = 1; break; }
-            result = ui_dialog_event(dialog, &event);
-            if (result) break;
+            if (ui_dialog_event(dialog, &event, &notify))
+                result = proc(a, dialog, &notify, data);
         }
         render(a);
         SDL_Delay(8);
     }
+    SDL_StopTextInput();
     a->modal = outer;
-    return result;
+    return result < 0 ? 0 : result;
 }
 
-/* 2:0000, the message box wrapper; the death box has no beep. */
-static int message_box(app *a, const char *text, int yes_no, int question)
+/* 2:0000, the message box wrapper. */
+static int message_box(app *a, const char *text, int yes_no, int icon)
 {
     ui_dialog dialog;
-    ui_message_box(&dialog, &a->fonts, CAPTION, text, yes_no, question);
-    return run_modal(a, &dialog);
+    ui_message_box(&dialog, CAPTION, text, yes_no, icon);
+    return run_dialog(a, &dialog, simple_proc, NULL);
 }
 
+/* 2:17DA and 2:1834: the nesting pause used around dialogs and Pause. */
+static void pause_game(app *a) { ++a->paused; }
+static void resume_game(app *a) { if (a->paused > 0) --a->paused; }
+
+/* ---- Levels --------------------------------------------------------- */
+
+static void set_menu_checks(app *a);
+
 /* The parts of 4:0356 that follow its prompts. A new level is recorded as
- * visited with its password and raises "Highest Level". */
+ * visited with its password and raises "Highest Level"; a new level, not a
+ * retry, starts its song (4:0441). */
 static void load_level(app *a, uint16_t index, int retry)
 {
     const vcc_level *level = &a->dat->levels[index];
     vcc_level_progress *entry = &a->progress.levels[level->number];
     a->level_index = index;
+    a->ending = 0;
     if (!retry) vcc_attempts_new_level(&a->attempts);
     (void)vcc_game_start(&a->game, level);
+    if (!retry && a->paused == 0 && a->progress.music) music_start(&a->sound, level->number);
     if (entry->password[0] == '\0')
         memcpy(entry->password, level->password, sizeof entry->password);
     a->progress.current_level = level->number;
     if (level->number > a->progress.highest_level) a->progress.highest_level = level->number;
     progress_save(&a->progress);
+}
+
+static int index_for_number(const app *a, int number)
+{
+    int index;
+    for (index = 0; index < (int)a->dat->level_count; ++index)
+        if (a->dat->levels[index].number == number) return index;
+    return -1;
+}
+
+/* 4:0E48: a level is open without a password when it is level 1 or the
+ * profile already holds its correct password. */
+static int level_known(const app *a, int number)
+{
+    int index = index_for_number(a, number);
+    if (number <= 1) return 1;
+    if (index < 0 || number > (int)VCC_MAX_LEVELS) return 0;
+    return SDL_strcasecmp(a->progress.levels[number].password,
+        a->dat->levels[index].password) == 0;
+}
+
+typedef struct password_data {
+    int number;
+    const char *password;
+} password_data;
+
+/* 4:1016, DLG_PASSWORD. */
+static int password_proc(app *a, ui_dialog *dialog, const ui_notify *notify, void *data)
+{
+    password_data *p = data;
+    char message[UI_TEXT_CAPACITY + 48];
+    ui_control *edit = ui_find(dialog, 101);
+    if (notify->code != 0) return -1;
+    if (notify->id == 2) return 0;
+    if (notify->id != 1 || !edit) return -1;
+    if (SDL_strcasecmp(edit->text, p->password) == 0) return 1;
+    if (edit->text[0]) (void)snprintf(message, sizeof message,
+        "Sorry, \"%s\" is not the correct password.", edit->text);
+    else (void)snprintf(message, sizeof message, "You must enter a password.");
+    (void)message_box(a, message, 0, 2);
+    ui_focus(dialog, 101);
+    return -1;
+}
+
+/* 4:115C: changing to a level whose password is not known asks for it. */
+static int password_gate(app *a, int number)
+{
+    ui_dialog dialog;
+    password_data data;
+    char prompt[64];
+    ui_control *control;
+    int index = index_for_number(a, number);
+    int result;
+    if (number == a->game.level->number || level_known(a, number)) return 1;
+    if (index < 0) return 1;
+    pause_game(a);
+    data.number = number;
+    data.password = a->dat->levels[index].password;
+    ui_dialog_begin(&dialog, "Password Entry", ui_dlu(0, 0, 181, 0).w, ui_dlu(0, 0, 0, 56).h);
+    (void)snprintf(prompt, sizeof prompt, "Please enter the password for level %d:", number);
+    (void)ui_add(&dialog, UI_STATIC, 100, ui_dlu(9, 11, 132, 8), prompt);
+    control = ui_add(&dialog, UI_EDIT, 101, ui_dlu(142, 9, 27, 12), "");
+    if (control) control->max_length = 9;
+    control = ui_add(&dialog, UI_BUTTON, 1, ui_dlu(42, 36, 40, 14), "OK");
+    if (control) control->is_default = 1;
+    (void)ui_add(&dialog, UI_BUTTON, 2, ui_dlu(98, 36, 40, 14), "Cancel");
+    dialog.cancel_id = 2;
+    ui_focus(&dialog, 101);
+    result = run_dialog(a, &dialog, password_proc, &data);
+    resume_game(a);
+    return result;
+}
+
+static void go_to_level(app *a, int number)
+{
+    int index = index_for_number(a, number);
+    if (index >= 0) load_level(a, (uint16_t)index, 0);
 }
 
 static void next_level(app *a)
@@ -476,9 +704,12 @@ static void retry_level(app *a)
     load_level(a, a->level_index, 1);
 }
 
+/* ---- Engine hooks --------------------------------------------------- */
+
 static void hook_sound(void *context, vcc_sound_id id, int interrupt)
 {
-    audio_play(&((app *)context)->audio, id, interrupt);
+    app *a = context;
+    if (a->progress.sounds) audio_play(&a->sound, id, interrupt);
 }
 
 /* 2:0B9A, then the retry load. */
@@ -512,6 +743,8 @@ static void show_complete(app *a)
     vcc_completion c;
     ui_dialog dialog;
     char text[UI_TEXT_CAPACITY];
+    ui_control *button;
+    int index;
     vcc_score_completion(&c, level->number, a->game.time_left,
         a->attempts.attempts, a->progress.highest_level, &entry->record,
         a->progress.current_score);
@@ -519,16 +752,16 @@ static void show_complete(app *a)
     a->progress.current_score = c.total_score;
     progress_save(&a->progress);
 
-    ui_dialog_begin(&dialog, "Level Complete!", 136 * 6 / 4, 119 * 13 / 8);
-    ui_dialog_static(&dialog, ui_dlu(9, 7, 117, 8), UI_CENTER, titles[c.title]);
+    ui_dialog_begin(&dialog, "Level Complete!", ui_dlu(0, 0, 136, 0).w, ui_dlu(0, 0, 0, 119).h);
+    (void)ui_add(&dialog, UI_STATIC, 101, ui_dlu(9, 7, 117, 8), titles[c.title]);
     (void)snprintf(text, sizeof text, "Time Bonus:  %d", (int)c.time_bonus);
-    ui_dialog_static(&dialog, ui_dlu(9, 21, 117, 8), UI_CENTER, text);
+    (void)ui_add(&dialog, UI_STATIC, 102, ui_dlu(9, 21, 117, 8), text);
     (void)snprintf(text, sizeof text, "Level Bonus:  %ld", (long)c.level_bonus);
-    ui_dialog_static(&dialog, ui_dlu(9, 35, 117, 8), UI_CENTER, text);
+    (void)ui_add(&dialog, UI_STATIC, 103, ui_dlu(9, 35, 117, 8), text);
     (void)snprintf(text, sizeof text, "Level Score:  %ld", (long)c.level_score);
-    ui_dialog_static(&dialog, ui_dlu(9, 49, 117, 8), UI_CENTER, text);
+    (void)ui_add(&dialog, UI_STATIC, 108, ui_dlu(9, 49, 117, 8), text);
     (void)snprintf(text, sizeof text, "Total Score:  %ld", (long)c.total_score);
-    ui_dialog_static(&dialog, ui_dlu(9, 63, 117, 8), UI_CENTER, text);
+    (void)ui_add(&dialog, UI_STATIC, 104, ui_dlu(9, 63, 117, 8), text);
     switch (c.message) {
     case VCC_RECORD_ESTABLISHED:
         (void)snprintf(text, sizeof text, "You have established a time record for this level!");
@@ -545,9 +778,11 @@ static void show_complete(app *a)
         text[0] = '\0';
         break;
     }
-    ui_dialog_static(&dialog, ui_dlu(9, 77, 117, 19), UI_CENTER, text);
-    ui_dialog_button(&dialog, ui_dlu(48, 99, 40, 14), 106, "Onward!", 1);
-    (void)run_modal(a, &dialog);
+    (void)ui_add(&dialog, UI_STATIC, 105, ui_dlu(9, 77, 117, 19), text);
+    for (index = 0; index < dialog.count; ++index) dialog.controls[index].align = UI_CENTER;
+    button = ui_add(&dialog, UI_BUTTON, 106, ui_dlu(48, 99, 40, 14), "Onward!");
+    if (button) button->is_default = 1;
+    (void)run_dialog(a, &dialog, simple_proc, NULL);
 }
 
 /* Interludes after levels 50, 60, ..., 140 (table at DS:0EB8). */
@@ -564,6 +799,35 @@ static const char *const interludes[] = {
     "Groov-u-loids! Chip makes it almost to the end. He's stoked!"
 };
 
+static void begin_board_drawing(app *a)
+{
+    (void)SDL_SetRenderTarget(a->renderer, a->gfx.board);
+    (void)SDL_RenderSetScale(a->renderer, 1.0f, 1.0f);
+}
+
+static void end_board_drawing(app *a)
+{
+    (void)SDL_SetRenderTarget(a->renderer, NULL);
+    (void)SDL_RenderSetScale(a->renderer, 1.5f, 1.5f);
+}
+
+static void capture_board(app *a)
+{
+    int cx;
+    int cy;
+    int x;
+    int y;
+    begin_board_drawing(a);
+    camera(&a->game, &cx, &cy);
+    for (y = 0; y < VIEW_TILES; ++y)
+        for (x = 0; x < VIEW_TILES; ++x) {
+            SDL_Rect target = {x * TILE, y * TILE, TILE, TILE};
+            draw_cell(a, vcc_game_tile(&a->game, (uint8_t)(cx + x), (uint8_t)(cy + y), 0),
+                vcc_game_tile(&a->game, (uint8_t)(cx + x), (uint8_t)(cy + y), 1), &target);
+        }
+    end_board_drawing(a);
+}
+
 /* 7:0CCA */
 static void hook_completed(void *context, vcc_game *game)
 {
@@ -571,25 +835,13 @@ static void hook_completed(void *context, vcc_game *game)
     int number = game->level->number;
     show_complete(a);
     if (number == 144 || number == 149) {
-        /* The exit animation and ending (7:0A74) are not reconstructed yet;
-         * show its messages in order. */
-        char text[512];
-        int completed = 0;
-        int level;
-        (void)message_box(a, "Great Job, Chip!\nYou did it!  You finished the challenge!", 0, 0);
-        (void)message_box(a, "Melinda herself offers Chip membership in the exclusive Bit Busters "
-            "computer club, and gives him access to the club's computer system.  "
-            "Chip is in heaven!", 0, 0);
-        for (level = 1; level <= 149; ++level)
-            if (a->progress.levels[level].record.present) ++completed;
-        (void)snprintf(text, sizeof text, "You completed %d levels, and your total score for the "
-            "challenge is %li points.\n\nYou can still improve your score, by completing levels "
-            "that you skipped, and getting better times on each level.  When you replay a level, "
-            "if your new score is better than your old, your score will be adjusted by the "
-            "difference.  Select Best Times from the Game menu to see your scores for each level.",
-            completed, (long)a->progress.current_score);
-        (void)message_box(a, text, 0, 0);
-        load_level(a, a->level_index, 1);
+        /* 7:0D72: start the ending; the timer drives 7:0A74. */
+        capture_board(a);
+        a->ending = 1;
+        a->game.sliding = 0;
+        a->game.death = 0;
+        a->game.slip_count = 0U;
+        a->game.monster_count = 0U;
         return;
     }
     if (number % 10 == 0 && number / 10 >= 5 && number / 10 <= 14)
@@ -597,12 +849,413 @@ static void hook_completed(void *context, vcc_game *game)
     next_level(a);
 }
 
-static uint16_t level_index_for(const vcc_dat *dat, uint16_t number)
+static void show_final_messages(app *a)
 {
-    uint16_t index;
-    for (index = 0U; index < dat->level_count; ++index)
-        if (dat->levels[index].number == number) return index;
-    return 0U;
+    char text[600];
+    int completed = 0;
+    int level;
+    (void)message_box(a, "Great Job, Chip!\nYou did it!  You finished the challenge!", 0, 0);
+    /* LoadBitmap("chipend") over the board (7:0B86). */
+    begin_board_drawing(a);
+    (void)SDL_RenderCopy(a->renderer, a->gfx.chipend, NULL, NULL);
+    end_board_drawing(a);
+    a->ending = 0x69;
+    (void)message_box(a, "Melinda herself offers Chip membership in the exclusive Bit Busters "
+        "computer club, and gives him access to the club's computer system.  "
+        "Chip is in heaven!", 0, 0);
+    for (level = 1; level <= 149; ++level)
+        if (a->progress.levels[level].record.present) ++completed;
+    (void)snprintf(text, sizeof text, "You completed %d levels, and your total score for the "
+        "challenge is %li points.\n\nYou can still improve your score, by completing levels "
+        "that you skipped, and getting better times on each level.  When you replay a level, "
+        "if your new score is better than your old, your score will be adjusted by the "
+        "difference.  Select Best Times from the Game menu to see your scores for each level.",
+        completed, (long)a->progress.current_score);
+    (void)message_box(a, text, 0, 0);
+}
+
+/* 7:0A74: the ending, one step per board timer tick. Frames draw over the
+ * previous ones without clearing, as the original paints the board DC. */
+static void ending_tick(app *a)
+{
+    int count = a->ending;
+    if (count >= 0x69) return;
+    begin_board_drawing(a);
+    if (count < 32) {
+        static const uint8_t exits[3] = {VCC_EXIT, VCC_EXIT_ANIM_1, VCC_EXIT_ANIM_2};
+        int grow = count * 8;
+        int cx;
+        int cy;
+        SDL_Rect target;
+        camera(&a->game, &cx, &cy);
+        target.x = (a->game.chip_x - cx) * TILE - grow / 2;
+        target.y = (a->game.chip_y - cy) * TILE - grow / 2;
+        if (target.x < 0) target.x = 0;
+        if (target.y < 0) target.y = 0;
+        target.w = grow + TILE;
+        target.h = grow + TILE;
+        draw_cell(a, VCC_CHIP_S, exits[count % 3], &target);
+    } else if (count < 0x68 && count % 2 == 0) {
+        /* 3:072E(2) chooses Chip facing south or the cheering tile 0x39. */
+        SDL_Rect target = {0, 0, BOARD_SIZE, BOARD_SIZE};
+        unsigned r;
+        a->game.random_seed = a->game.random_seed * UINT32_C(0x343FD) + UINT32_C(0x269EC3);
+        r = (unsigned)((a->game.random_seed >> 16) & 0x7FFFU) % 2U;
+        draw_cell(a, r == 0U ? VCC_CHIP_S : 0x39, VCC_EXIT, &target);
+    }
+    end_board_drawing(a);
+    if (count == 0x68) {
+        show_final_messages(a);
+        return;
+    }
+    ++a->ending;
+}
+
+/* ---- Menus and commands -------------------------------------------- */
+
+static void build_menu(app *a)
+{
+    ui_menu *m;
+    memset(&a->menu, 0, sizeof a->menu);
+    a->menu.active = -1;
+    a->menu.count = 4;
+    m = &a->menu.menus[0];
+    m->label = "&Game";
+    m->items[0] = (ui_menu_item){"&New Game\tF2", CMD_NEW_GAME, 0, 0};
+    m->items[1] = (ui_menu_item){"&Pause\tF3", CMD_PAUSE, 0, 0};
+    m->items[2] = (ui_menu_item){"Best &Times...", CMD_BEST_TIMES, 0, 0};
+    m->items[3] = (ui_menu_item){NULL, 0, 0, 0};
+    m->items[4] = (ui_menu_item){"E&xit", CMD_EXIT, 0, 0};
+    m->count = 5;
+    m = &a->menu.menus[1];
+    m->label = "&Options";
+    m->items[0] = (ui_menu_item){"&Background Music", CMD_MUSIC, 0, 0};
+    m->items[1] = (ui_menu_item){"&Sound Effects", CMD_SOUND, 0, 0};
+    m->items[2] = (ui_menu_item){"&Color", CMD_COLOR, 0, 0};
+    m->count = 3;
+    m = &a->menu.menus[2];
+    m->label = "&Level";
+    m->items[0] = (ui_menu_item){"&Restart\tCtrl+R", CMD_RESTART, 0, 0};
+    m->items[1] = (ui_menu_item){"&Next\tCtrl+N", CMD_NEXT, 0, 0};
+    m->items[2] = (ui_menu_item){"&Previous\tCtrl+P", CMD_PREVIOUS, 0, 0};
+    m->items[3] = (ui_menu_item){"&Go To...", CMD_GOTO, 0, 0};
+    m->count = 4;
+    m = &a->menu.menus[3];
+    m->label = "&Help";
+    m->items[0] = (ui_menu_item){"&Contents\tF1", CMD_HELP_CONTENTS, 0, 0};
+    m->items[1] = (ui_menu_item){"&How to Play", CMD_HELP_PLAY, 0, 0};
+    m->items[2] = (ui_menu_item){"C&ommands", CMD_HELP_COMMANDS, 0, 0};
+    m->items[3] = (ui_menu_item){"How to &Use Help", CMD_HELP_USE, 0, 0};
+    m->items[4] = (ui_menu_item){NULL, 0, 0, 0};
+    m->items[5] = (ui_menu_item){"&About Chip's Challenge...", CMD_ABOUT, 0, 0};
+    m->count = 6;
+    set_menu_checks(a);
+}
+
+/* WM_CREATE (2:2334) checks the options from the profile and greys Music
+ * when no MIDI output exists. */
+static void set_menu_checks(app *a)
+{
+    a->menu.menus[0].items[1].checked = a->paused > 0;
+    a->menu.menus[1].items[0].checked = a->progress.music != 0;
+    a->menu.menus[1].items[1].checked = a->progress.sounds != 0;
+    a->menu.menus[1].items[2].checked = a->progress.color != 0;
+    a->menu.menus[1].items[0].disabled = a->sound.song_count == 0 || !a->sound.music;
+}
+
+typedef struct goto_data {
+    int number;
+} goto_data;
+
+/* 6:0000, DLG_GOTO, with the password check of 4:0EAA. */
+static int goto_proc(app *a, ui_dialog *dialog, const ui_notify *notify, void *data)
+{
+    goto_data *g = data;
+    ui_control *number_edit = ui_find(dialog, 100);
+    ui_control *password_edit = ui_find(dialog, 101);
+    char *end = NULL;
+    long number;
+    int valid;
+    if (notify->code != 0) return -1;
+    if (notify->id == 2) return 0;
+    if (notify->id != 1 || !number_edit || !password_edit) return -1;
+    number = strtol(number_edit->text, &end, 10);
+    valid = number_edit->text[0] != '\0' && end && *end == '\0';
+    if (!valid && number_edit->text[0] == '\0') { valid = 1; number = 0; }
+    if (!valid || number < 0 || number > (long)a->dat->level_count) {
+        (void)message_box(a, "That is not a valid level number.", 0, 3);
+        ui_focus(dialog, 100);
+        return -1;
+    }
+    if (password_edit->text[0] == '\0' && number == 0) {
+        (void)message_box(a, "You must enter a level and/or password.", 0, 3);
+        ui_focus(dialog, 100);
+        return -1;
+    }
+    if (number != 0) {
+        int index = index_for_number(a, (int)number);
+        if (number == 1 || a->progress.levels[number].password[0] != '\0'
+            || (index >= 0 && SDL_strcasecmp(a->dat->levels[index].password,
+                password_edit->text) == 0)) {
+            g->number = (int)number;
+            return 1;
+        }
+    } else {
+        int index;
+        for (index = 0; index < (int)a->dat->level_count; ++index)
+            if (SDL_strcasecmp(a->dat->levels[index].password, password_edit->text) == 0) {
+                g->number = a->dat->levels[index].number;
+                return 1;
+            }
+    }
+    (void)message_box(a, "You must enter a valid password.", 0, 3);
+    ui_focus(dialog, 101);
+    return -1;
+}
+
+static void command_goto(app *a)
+{
+    ui_dialog dialog;
+    goto_data data = {0};
+    ui_control *control;
+    int result;
+    pause_game(a);
+    ui_dialog_begin(&dialog, "Go To Level", ui_dlu(0, 0, 151, 0).w, ui_dlu(0, 0, 0, 94).h);
+    (void)ui_add(&dialog, UI_STATIC, -1, ui_dlu(9, 7, 132, 19),
+        "Enter a level number and password, or just a password.");
+    control = ui_add(&dialog, UI_EDIT, 100, ui_dlu(69, 30, 32, 12), "");
+    if (control) control->max_length = 3;
+    control = ui_add(&dialog, UI_EDIT, 101, ui_dlu(69, 46, 32, 12), "");
+    if (control) control->max_length = 9;
+    control = ui_add(&dialog, UI_STATIC, -1, ui_dlu(16, 32, 51, 8), "Level number:");
+    if (control) control->align = UI_RIGHT;
+    control = ui_add(&dialog, UI_STATIC, -1, ui_dlu(16, 47, 51, 8), "Password:");
+    if (control) control->align = UI_RIGHT;
+    control = ui_add(&dialog, UI_BUTTON, 1, ui_dlu(27, 74, 40, 14), "OK");
+    if (control) control->is_default = 1;
+    (void)ui_add(&dialog, UI_BUTTON, 2, ui_dlu(83, 74, 40, 14), "Cancel");
+    dialog.cancel_id = 2;
+    ui_focus(&dialog, 100);
+    result = run_dialog(a, &dialog, goto_proc, &data);
+    resume_game(a);
+    if (result == 1 && data.number != a->game.level->number) go_to_level(a, data.number);
+}
+
+typedef struct times_data {
+    char items[150][64];
+} times_data;
+
+/* 6:018E, DLG_BESTTIMES. */
+static int times_proc(app *a, ui_dialog *dialog, const ui_notify *notify, void *data)
+{
+    ui_control *list = ui_find(dialog, 100);
+    (void)data;
+    if (notify->id == 100) {
+        ui_control *go = ui_find(dialog, 101);
+        if (notify->code == 1 && go) go->disabled = 0;
+        if (notify->code != 2) return -1;
+    } else if (notify->id == 1) {
+        return 1;
+    } else if (notify->id == 2) {
+        return 0;
+    } else if (notify->id != 101) {
+        return -1;
+    }
+    if (a->progress.highest_level < 1U || !list || list->item_count == 0 || list->selection < 0)
+        return -1;
+    {
+        int number = list->selection + 1;
+        if (number != a->game.level->number && !password_gate(a, number)) return -1;
+        return 1000 + number;
+    }
+}
+
+static void command_best_times(app *a)
+{
+    static times_data data;
+    ui_dialog dialog;
+    ui_control *list;
+    ui_control *button;
+    char text[64];
+    int completed = 0;
+    int level;
+    int highest = a->progress.highest_level;
+    int result;
+    pause_game(a);
+    ui_dialog_begin(&dialog, "Best Times", ui_dlu(0, 0, 159, 0).w, ui_dlu(0, 0, 0, 159).h);
+    list = ui_add(&dialog, UI_LIST, 100, ui_dlu(7, 49, 144, 81), "");
+    (void)ui_add(&dialog, UI_STATIC, -1, ui_dlu(7, 36, 144, 8),
+        "Level number, seconds left, level score:");
+    button = ui_add(&dialog, UI_BUTTON, 1, ui_dlu(31, 138, 40, 14), "OK");
+    if (button) button->is_default = 1;
+    button = ui_add(&dialog, UI_BUTTON, 101, ui_dlu(87, 138, 40, 14), "Go To");
+    if (button) button->disabled = 1;
+    if (highest <= 0) {
+        (void)snprintf(data.items[0], sizeof data.items[0], "No levels completed.");
+        list->item_count = 1;
+    } else {
+        for (level = 1; level <= highest && level < 150; ++level) {
+            const vcc_level_record *r = &a->progress.levels[level].record;
+            if (r->present) {
+                (void)snprintf(data.items[level - 1], sizeof data.items[0],
+                    "Level %d:  %d seconds, %li points", level, r->seconds, (long)r->score);
+                ++completed;
+            } else {
+                (void)snprintf(data.items[level - 1], sizeof data.items[0],
+                    "Level %d:  not completed", level);
+            }
+        }
+        list->item_count = highest < 150 ? highest : 149;
+    }
+    list->items = data.items;
+    list->selection = -1;
+    (void)snprintf(text, sizeof text, "You have completed %d level%s.", completed,
+        completed == 1 ? "" : "s");
+    (void)ui_add(&dialog, UI_STATIC, 102, ui_dlu(7, 10, 142, 8), text);
+    (void)snprintf(text, sizeof text, "Your total score is %li points.",
+        (long)a->progress.current_score);
+    (void)ui_add(&dialog, UI_STATIC, 103, ui_dlu(7, 23, 142, 8), text);
+    dialog.cancel_id = 2;
+    ui_focus(&dialog, 100);
+    result = run_dialog(a, &dialog, times_proc, &data);
+    resume_game(a);
+    if (result > 1000) go_to_level(a, result - 1000);
+}
+
+/* WEP4UTIL WEPABOUT2: template 101 in the System font with the
+ * Entertainment Pack banner (control 301), the application icon, name,
+ * credits (string 258), and the DLL's copyright (string 259). */
+static void command_about(app *a)
+{
+    ui_dialog dialog;
+    ui_control *control;
+    SDL_Rect icon = ui_dlu_system(10, 60, 0, 0);
+    int width = ui_dlu_system(0, 0, 140, 0).w;
+    pause_game(a);
+    ui_dialog_begin(&dialog, "About Chip's Challenge", width, ui_dlu_system(0, 0, 0, 148).h);
+    dialog.face = UI_FACE_SYSTEM;
+    control = ui_add(&dialog, UI_IMAGE, 301, (SDL_Rect){(width - 260) / 2, 10, 259, 64}, "");
+    if (control) {
+        control->image = a->gfx.banner;
+        control->image_source = (SDL_Rect){0, 0, 259, 64};
+    }
+    control = ui_add(&dialog, UI_IMAGE, 701, (SDL_Rect){icon.x, icon.y, 32, 32}, "");
+    if (control) {
+        control->image = a->gfx.icon;
+        control->image_source = (SDL_Rect){0, 0, 32, 32};
+    }
+    control = ui_add(&dialog, UI_STATIC, 702, ui_dlu_system(26, 63, 92, 16), "Chip's Challenge");
+    if (control) control->align = UI_CENTER;
+    control = ui_add(&dialog, UI_STATIC, 703, ui_dlu_system(10, 82, 124, 16),
+        "By Tony Krueger\nArtwork by Ed Halley");
+    if (control) control->align = UI_CENTER;
+    control = ui_add(&dialog, UI_STATIC, 704, ui_dlu_system(20, 102, 100, 16),
+        "Copyright \xa9 1992 Microsoft Corp.\nAll rights reserved.");
+    if (control) control->align = UI_CENTER;
+    control = ui_add(&dialog, UI_BUTTON, 1, ui_dlu_system(53, 124, 34, 15), "OK");
+    if (control) control->is_default = 1;
+    dialog.cancel_id = 1;
+    (void)run_dialog(a, &dialog, simple_proc, NULL);
+    resume_game(a);
+}
+
+/* WEPHELP with HELP_KEY "Contents", "How To Play", or "Commands"
+ * (DS:0248, DS:0252, DS:025E). HELP_HELPONHELP needs WINHELP.HLP, which
+ * the archive does not include, so it opens the contents. */
+static void command_help(app *a, int id)
+{
+    const char *keyword = "Contents";
+    if (id == CMD_HELP_PLAY) keyword = "How To Play";
+    if (id == CMD_HELP_COMMANDS) keyword = "Commands";
+    pause_game(a);
+    help_run(a->renderer, keyword, help_backdrop_draw, a);
+    resume_game(a);
+}
+
+static void command(app *a, int id)
+{
+    switch (id) {
+    case CMD_NEW_GAME:
+        /* 2:1F9E */
+        if (a->progress.highest_level != 1U && message_box(a,
+                "Starting a new game will begin you back at level 1, reset your score to "
+                "zero, and forget the passwords to any levels you have visited.", 1, 1) != 6)
+            break;
+        vcc_progress_new_game(&a->progress);
+        go_to_level(a, 1);
+        break;
+    case CMD_PAUSE:
+        /* 2:2014: Pause stops the music; resuming restarts the level's song. */
+        if (a->paused > 0) {
+            resume_game(a);
+            if (a->progress.music && a->paused == 0) music_start(&a->sound, a->game.level->number);
+        } else {
+            music_stop(&a->sound);
+            pause_game(a);
+        }
+        break;
+    case CMD_BEST_TIMES: command_best_times(a); break;
+    case CMD_EXIT: a->quit = 1; break;
+    case CMD_MUSIC:
+        a->progress.music = (int16_t)!a->progress.music;
+        if (a->progress.music) music_start(&a->sound, a->game.level->number);
+        else music_stop(&a->sound);
+        progress_save(&a->progress);
+        break;
+    case CMD_SOUND:
+        a->progress.sounds = (int16_t)!a->progress.sounds;
+        progress_save(&a->progress);
+        if (a->progress.sounds) audio_play(&a->sound, VCC_SOUND_SOUND_ON, 1);
+        break;
+    case CMD_COLOR:
+        a->progress.color = (int16_t)!a->progress.color;
+        progress_save(&a->progress);
+        break;
+    case CMD_RESTART: retry_level(a); break;
+    case CMD_NEXT: {
+        int number = a->game.level->number + 1;
+        if (index_for_number(a, number) >= 0 && password_gate(a, number)) go_to_level(a, number);
+        break;
+    }
+    case CMD_PREVIOUS: {
+        int number = a->game.level->number - 1;
+        if (number >= 1 && password_gate(a, number)) go_to_level(a, number);
+        break;
+    }
+    case CMD_GOTO: command_goto(a); break;
+    case CMD_ABOUT: command_about(a); break;
+    case CMD_HELP_CONTENTS: case CMD_HELP_PLAY: case CMD_HELP_COMMANDS: case CMD_HELP_USE:
+        command_help(a, id);
+        break;
+    default:
+        break;
+    }
+    set_menu_checks(a);
+}
+
+/* CHIPSMENU accelerators, plus Vita buttons for the same commands. */
+static int accelerator(const SDL_Event *event)
+{
+    if (event->type == SDL_KEYDOWN) {
+        SDL_Keycode key = event->key.keysym.sym;
+        int ctrl = (SDL_GetModState() & KMOD_CTRL) != 0;
+        if (key == SDLK_F1) return CMD_HELP_CONTENTS;
+        if (key == SDLK_F2) return CMD_NEW_GAME;
+        if (key == SDLK_F3) return CMD_PAUSE;
+        if (ctrl && key == SDLK_r) return CMD_RESTART;
+        if (ctrl && key == SDLK_n) return CMD_NEXT;
+        if (ctrl && key == SDLK_p) return CMD_PREVIOUS;
+    }
+    if (event->type == SDL_CONTROLLERBUTTONDOWN) {
+        switch (event->cbutton.button) {
+        case SDL_CONTROLLER_BUTTON_BACK: return CMD_PAUSE;
+        case SDL_CONTROLLER_BUTTON_Y: return CMD_RESTART;
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: return CMD_PREVIOUS;
+        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: return CMD_NEXT;
+        default: break;
+        }
+    }
+    return 0;
 }
 
 static vcc_direction button_direction(Uint8 button)
@@ -627,6 +1280,39 @@ static vcc_direction key_direction(SDL_Keycode key)
     }
 }
 
+/* ---- Main ----------------------------------------------------------- */
+
+static int load_graphics(app *a)
+{
+    int access;
+    Uint32 format;
+    graphics *g = &a->gfx;
+    g->tiles = load_bmp(a->renderer, "app0:/data/OBJ32_4_RGB.bmp", 0);
+    g->tiles_mono = load_bmp(a->renderer, "app0:/data/OBJ32_1_RGB.bmp", 0);
+    g->actors = load_bmp(a->renderer, "app0:/data/OBJ32_MASKED.bmp", 1);
+    g->background = load_bmp(a->renderer, "app0:/data/BACKGROUND_RGB.bmp", 0);
+    g->info = load_bmp(a->renderer, "app0:/data/INFOWND_RGB.bmp", 0);
+    g->digits = load_bmp(a->renderer, "app0:/data/200_RGB.bmp", 0);
+    g->chipend = load_bmp(a->renderer, "app0:/data/CHIPEND_RGB.bmp", 0);
+    g->banner = load_bmp(a->renderer, "app0:/data/WEP_666_RGB.bmp", 0);
+    g->icon = load_bmp(a->renderer, "app0:/data/ICON_RGB.bmp", 1);
+    g->board = SDL_CreateTexture(a->renderer, SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_TARGET, BOARD_SIZE, BOARD_SIZE);
+    if (!g->tiles || !g->actors || !g->background || !g->info || !g->digits || !g->board)
+        return 0;
+    (void)SDL_QueryTexture(g->background, &format, &access, &g->background_w, &g->background_h);
+    return 1;
+}
+
+static void free_graphics(graphics *g)
+{
+    SDL_Texture *all[] = {g->tiles, g->tiles_mono, g->actors, g->background,
+        g->info, g->digits, g->chipend, g->banner, g->icon, g->board};
+    size_t index;
+    for (index = 0U; index < sizeof all / sizeof all[0]; ++index)
+        if (all[index]) SDL_DestroyTexture(all[index]);
+}
+
 int main(void)
 {
     app *a = &the_app;
@@ -637,6 +1323,7 @@ int main(void)
     vcc_direction held = VCC_DIR_NONE;
     uint32_t next_repeat = 0U;
     uint32_t next_tick;
+    int index;
     bytes = read_file("app0:/data/CHIPS.DAT", &size);
     a->dat = malloc(sizeof *a->dat);
     if (!bytes || !a->dat || vcc_dat_parse(a->dat, bytes, size) != VCC_DAT_OK
@@ -648,18 +1335,14 @@ int main(void)
     if (TTF_Init() != 0) goto cleanup;
     window = SDL_CreateWindow("Vita Chips Challenge", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
-    a->renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) : NULL;
+    a->renderer = window ? SDL_CreateRenderer(window, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE) : NULL;
     if (!a->renderer || SDL_RenderSetScale(a->renderer, 1.5f, 1.5f) != 0) goto cleanup;
-    a->graphics.tiles = load_bmp(a->renderer, "app0:/data/OBJ32_4_RGB.bmp");
-    a->graphics.actors = load_masked_tiles(a->renderer);
-    a->graphics.background = load_bmp(a->renderer, "app0:/data/BACKGROUND_RGB.bmp");
-    a->graphics.info = load_bmp(a->renderer, "app0:/data/INFOWND_RGB.bmp");
-    a->graphics.digits = load_bmp(a->renderer, "app0:/data/200_RGB.bmp");
-    if (!a->graphics.tiles || !a->graphics.actors || !a->graphics.background
-        || !a->graphics.info || !a->graphics.digits) goto cleanup;
-    if (!ui_fonts_open(&a->fonts, "app0:/data/fonts/LiberationSans-Regular.ttf",
+    if (!load_graphics(a)) goto cleanup;
+    if (!ui_init("app0:/data/fonts/LiberationSans-Regular.ttf",
             "app0:/data/fonts/LiberationSans-Bold.ttf")) goto cleanup;
-    if (!audio_init(&a->audio)) goto cleanup;
+    (void)audio_init(&a->sound);
+    (void)help_load(a->renderer, "app0:/data/help");
     if (SDL_NumJoysticks() > 0 && SDL_IsGameController(0)) controller = SDL_GameControllerOpen(0);
 
     a->game.hooks.context = a;
@@ -669,53 +1352,73 @@ int main(void)
     vcc_game_seed(&a->game, SDL_GetTicks());  /* srand(GetCurrentTime()), 2:092E */
     /* Startup resumes at "Current Level" with "Current Score" (2:0B24). */
     progress_load(&a->progress);
-    load_level(a, level_index_for(a->dat, a->progress.current_level), 0);
+    build_menu(a);
+    index = index_for_number(a, a->progress.current_level);
+    load_level(a, (uint16_t)(index < 0 ? 0 : index), 0);
 
 #ifdef VCC_PREVIEW
     if (VCC_PREVIEW == 1) { a->game.death = VCC_DEATH_FIRE; hook_died(a, &a->game); }
     if (VCC_PREVIEW == 3) { a->attempts.attempts = 2; show_complete(a); }
+    if (VCC_PREVIEW == 4) command_about(a);
+    if (VCC_PREVIEW == 5) command_best_times(a);
+    if (VCC_PREVIEW == 6) command_goto(a);
+    if (VCC_PREVIEW == 7) { a->menu.active = 2; a->menu.open = 1; a->menu.item = 1; }
+    if (VCC_PREVIEW == 8) { capture_board(a); a->ending = 30; }
+    if (VCC_PREVIEW == 9) pause_game(a);
+    if (VCC_PREVIEW == 10) command_help(a, CMD_HELP_PLAY);
 #endif
     next_tick = SDL_GetTicks() + TICK_MS;
     while (!a->quit) {
         SDL_Event event;
         uint32_t now;
         while (SDL_PollEvent(&event)) {
-            vcc_direction direction = VCC_DIR_NONE;
+            int id;
             if (event.type == SDL_QUIT) a->quit = 1;
-            if (event.type == SDL_KEYDOWN) {
-                /* Windows key repeat drives held keys (2:2540). */
-                direction = key_direction(event.key.keysym.sym);
-                if (event.key.keysym.sym == SDLK_r && (SDL_GetModState() & KMOD_CTRL))
-                    retry_level(a);
-                else vcc_game_key(&a->game, direction);
-            }
-            if (event.type == SDL_CONTROLLERBUTTONDOWN) {
-                direction = button_direction(event.cbutton.button);
-                if (event.cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
-                    retry_level(a);  /* Level > Restart, Ctrl+R */
-                } else {
-                    vcc_game_key(&a->game, direction);
-                    if (direction != VCC_DIR_NONE) {
-                        held = direction;
-                        next_repeat = SDL_GetTicks() + REPEAT_DELAY_MS;
-                    }
-                }
-            }
+            id = ui_menu_event(&a->menu, &event);
+            if (id) { command(a, id); continue; }
+            if (a->menu.active >= 0) continue;
+            id = accelerator(&event);
+            if (id) { command(a, id); continue; }
             if (event.type == SDL_CONTROLLERBUTTONUP
                 && button_direction(event.cbutton.button) == held)
                 held = VCC_DIR_NONE;
+            if (a->ending > 0 || a->paused > 0) continue;
+            if (event.type == SDL_KEYDOWN) {
+                /* Windows key repeat drives held keys (2:2540). */
+                vcc_game_key(&a->game, key_direction(event.key.keysym.sym));
+            }
+            if (event.type == SDL_CONTROLLERBUTTONDOWN) {
+                vcc_direction direction = button_direction(event.cbutton.button);
+                vcc_game_key(&a->game, direction);
+                if (direction != VCC_DIR_NONE) {
+                    held = direction;
+                    next_repeat = SDL_GetTicks() + REPEAT_DELAY_MS;
+                }
+            }
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                /* Board WM_LBUTTONDOWN (2:27EA): walk toward the cell. */
+                int x = event.button.x - BOARD_X;
+                int y = event.button.y - BOARD_Y;
+                if (x >= 0 && y >= 0 && x < BOARD_SIZE && y < BOARD_SIZE) {
+                    int cx;
+                    int cy;
+                    camera(&a->game, &cx, &cy);
+                    vcc_game_click(&a->game, cx + x / TILE, cy + y / TILE);
+                }
+            }
         }
         now = SDL_GetTicks();
-        if (held != VCC_DIR_NONE && (int32_t)(now - next_repeat) >= 0) {
+        if (held != VCC_DIR_NONE && a->paused == 0 && a->menu.active < 0 && a->ending == 0
+            && (int32_t)(now - next_repeat) >= 0) {
             vcc_game_key(&a->game, held);
             next_repeat = now + REPEAT_RATE_MS;
         }
-        if (a->game.waiting) {
+        if ((a->game.waiting && a->ending == 0) || a->paused > 0) {
             next_tick = now + TICK_MS;
         } else if ((int32_t)(now - next_tick) >= 0) {
             next_tick += TICK_MS;
-            if ((int32_t)(now - next_tick) > (int32_t)(4U * TICK_MS)) next_tick = now + TICK_MS;
-            vcc_game_tick(&a->game);
+            if (a->ending > 0) ending_tick(a);
+            else vcc_game_tick(&a->game);
             now = SDL_GetTicks();
             if ((int32_t)(now - next_tick) > 0) next_tick = now + TICK_MS;
         }
@@ -723,14 +1426,12 @@ int main(void)
         SDL_Delay(4);
     }
 cleanup:
-    audio_quit(&a->audio);
-    ui_fonts_close(&a->fonts);
+    if (a->dat && a->game.level) progress_save(&a->progress);
+    audio_quit(&a->sound);
+    help_free();
+    ui_quit();
     if (controller) SDL_GameControllerClose(controller);
-    if (a->graphics.digits) SDL_DestroyTexture(a->graphics.digits);
-    if (a->graphics.info) SDL_DestroyTexture(a->graphics.info);
-    if (a->graphics.background) SDL_DestroyTexture(a->graphics.background);
-    if (a->graphics.actors) SDL_DestroyTexture(a->graphics.actors);
-    if (a->graphics.tiles) SDL_DestroyTexture(a->graphics.tiles);
+    free_graphics(&a->gfx);
     if (a->renderer) SDL_DestroyRenderer(a->renderer);
     if (window) SDL_DestroyWindow(window);
     if (TTF_WasInit()) TTF_Quit();
