@@ -31,15 +31,25 @@ def main() -> None:
         source = Image.open(args.assets / f"{name}.bmp")
         vita_bmp(source).save(args.assets / f"{name}_RGB.bmp")
 
+    # Creature, Chip, and item tiles 0x40-0x6F over non-floor ground are
+    # composited as 2:00C4 does: the colours come from column tile+0x30
+    # (the sprite on white) and the opaque area from tile+0x60 (white mask).
     source = Image.open(args.assets / "OBJ32_4.bmp").convert("RGB")
-    mask = Image.open(args.assets / "OBJ32_1.bmp").convert("1")
-    masked = vita_bmp(source)
+    masked = Image.new("RGB", source.size, TRANSPARENT_KEY)
+    source_pixels = source.load()
     masked_pixels = masked.load()
-    mask_pixels = mask.load()
-    for y in range(source.height):
-        for x in range(source.width):
-            if mask_pixels[x, y] == 0:
-                masked_pixels[x, y] = TRANSPARENT_KEY
+
+    def origin(tile: int) -> tuple[int, int]:
+        return (tile // 16) * 32, (tile % 16) * 32
+
+    for tile in range(0x40, 0x70):
+        tx, ty = origin(tile)
+        cx, cy = origin(tile + 0x30)
+        mx, my = origin(tile + 0x60)
+        for y in range(32):
+            for x in range(32):
+                if source_pixels[mx + x, my + y] != (0, 0, 0):
+                    masked_pixels[tx + x, ty + y] = source_pixels[cx + x, cy + y]
     masked.save(args.assets / "OBJ32_MASKED.bmp")
 
     # The application icon for the About dialog, transparent where the AND
