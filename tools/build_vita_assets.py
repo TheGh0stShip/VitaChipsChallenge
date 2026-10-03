@@ -31,7 +31,7 @@ def vita_png(image):
     """LiveArea and bubble images must be 8-bit palette PNGs; the Vita's
     installer rejects truecolor ones with error 0x8010113D."""
     return image.convert("RGB").quantize(colors=256, method=Image.Quantize.MEDIANCUT,
-                                         dither=Image.Dither.NONE)
+                                         dither=Image.Dither.FLOYDSTEINBERG)
 
 
 def main() -> None:

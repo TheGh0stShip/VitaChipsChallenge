@@ -1445,6 +1445,15 @@ int main(void)
             }
         }
         now = SDL_GetTicks();
+        /* A release can be consumed by a dialog's own loop, so repeat only
+         * while the button is really down. */
+        if (held != VCC_DIR_NONE && controller) {
+            static const SDL_GameControllerButton buttons[4] = {
+                SDL_CONTROLLER_BUTTON_DPAD_UP, SDL_CONTROLLER_BUTTON_DPAD_LEFT,
+                SDL_CONTROLLER_BUTTON_DPAD_DOWN, SDL_CONTROLLER_BUTTON_DPAD_RIGHT
+            };
+            if (!SDL_GameControllerGetButton(controller, buttons[held])) held = VCC_DIR_NONE;
+        }
         if (held != VCC_DIR_NONE && a->paused == 0 && a->menu.active < 0 && a->ending == 0
             && (int32_t)(now - next_repeat) >= 0) {
             vcc_game_key(&a->game, held);

@@ -11,14 +11,16 @@ from pathlib import Path
 from PIL import Image
 
 
-TRANSPARENT_KEY = (3, 2, 1)
+TRANSPARENT_KEY = (1, 2, 3)
 RGB_RESOURCES = ("OBJ32_4", "OBJ32_4E", "OBJ32_1", "BACKGROUND", "INFOWND", "200", "CHIPEND")
 
 
 def vita_bmp(image: Image.Image) -> Image.Image:
-    """Compensate for SDL2 Vita's red/blue interpretation of 24-bit BMP pixels."""
-    red, green, blue = image.convert("RGB").split()
-    return Image.merge("RGB", (blue, green, red))
+    """Expand to 24-bit RGB with the original palette colours unchanged.
+
+    An earlier build swapped red and blue to suit Vita3K; PS Vita hardware
+    shows SDL's BMP colours correctly, so no swap is applied."""
+    return image.convert("RGB")
 
 
 def main() -> None:
@@ -74,7 +76,7 @@ def icon_rgb(dib: bytes) -> Image.Image:
             if depth == 4:
                 value = (value >> 4) if x % 2 == 0 else (value & 15)
             b, g, r = palette[value]
-            pixels[x, y] = (b, g, r)  # Vita SDL swaps red and blue
+            pixels[x, y] = (r, g, b)
     return image
 
 

@@ -17,3 +17,11 @@ used for compilation only; the Linux Vita3K build is excluded from this check.
 
 This emulator result verifies packaging, startup, rendering, and basic input.
 It does not replace the physical Vita acceptance gate in `AGENTS.md`.
+
+## October 3, 2026: hardware colour check
+
+A PS Vita screenshot showed red and blue swapped in every bitmap. The asset
+pipeline had swapped them to suit Vita3K's display of 24-bit BMP textures;
+hardware renders SDL's BMP colours correctly. The swap was removed, so
+Vita3K captures now show red and blue exchanged while the device shows the
+original Windows palettes.

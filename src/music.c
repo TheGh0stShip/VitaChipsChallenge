@@ -628,14 +628,22 @@ static void note_off(vcc_music *music, int channel_index, int note)
     }
 }
 
+/* The game's MIDI files are Windows 3.1 dual-mode files: channels 1-10 for
+ * extended synthesizers and 13-16 for base-level ones such as FM cards.
+ * The MIDI Mapper sends an FM card only the base-level part, with channel
+ * 16 as percussion. */
+#define BASE_FIRST 12
+#define BASE_PERCUSSION 15
+
 static void note_on(vcc_music *music, int channel_index, int note, int velocity)
 {
     const op2_instrument *instrument;
+    if (channel_index < BASE_FIRST) return;
     if (velocity == 0) {
         note_off(music, channel_index, note);
         return;
     }
-    if (channel_index == 9) {
+    if (channel_index == BASE_PERCUSSION) {
         if (note < 35 || note > 81) return;
         instrument = &music->bank[128 + note - 35];
     } else {
