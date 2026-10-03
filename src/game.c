@@ -210,6 +210,7 @@ static void creature_enter(vcc_game *game, size_t destination, uint8_t actor)
     if (game->player_x == destination % VCC_MAP_WIDTH
         && game->player_y == destination / VCC_MAP_WIDTH) {
         game->status = VCC_COLLIDED;
+        game->last_event = VCC_EVENT_DEATH;
         return;
     }
     if (terrain == VCC_WATER && base != VCC_GLIDER_N)
@@ -343,7 +344,7 @@ static int push_block(vcc_game *game, int x, int y, vcc_direction direction)
     if (target == VCC_WATER) {
         game->terrain[to] = VCC_DIRT;
         game->actors[from] = 0U;
-        game->last_event = VCC_EVENT_WATER;
+        game->last_event = VCC_EVENT_SPLASH;
         return 1;
     }
     if (target == VCC_BOMB) {
@@ -373,15 +374,15 @@ static int enter_player_tile(vcc_game *game, size_t destination)
         if (game->chips_left > 0U)
             --game->chips_left;
         game->terrain[destination] = VCC_FLOOR;
-        game->last_event = VCC_EVENT_PICKUP;
+        game->last_event = VCC_EVENT_CHIP;
     } else if (tile >= VCC_BLUE_KEY && tile <= VCC_YELLOW_KEY) {
         ++game->keys[tile - VCC_BLUE_KEY];
         game->terrain[destination] = VCC_FLOOR;
-        game->last_event = VCC_EVENT_PICKUP;
+        game->last_event = VCC_EVENT_TOOL;
     } else if (tile >= VCC_FLIPPERS && tile <= VCC_SUCTION_BOOTS) {
         game->boots[tile - VCC_FLIPPERS] = 1U;
         game->terrain[destination] = VCC_FLOOR;
-        game->last_event = VCC_EVENT_PICKUP;
+        game->last_event = VCC_EVENT_TOOL;
     } else if (tile >= VCC_BLUE_DOOR && tile <= VCC_YELLOW_DOOR) {
         unsigned key = tile - VCC_BLUE_DOOR;
         if (game->keys[key] == 0U)
@@ -394,22 +395,24 @@ static int enter_player_tile(vcc_game *game, size_t destination)
         if (game->chips_left != 0U)
             return 0;
         game->terrain[destination] = VCC_FLOOR;
+        game->last_event = VCC_EVENT_SOCKET;
     } else if (tile == VCC_BLUE_WALL_FAKE) {
         game->terrain[destination] = VCC_FLOOR;
     } else if (tile == VCC_DIRT) {
         game->terrain[destination] = VCC_FLOOR;
     } else if (tile == VCC_WATER && game->boots[0] == 0U) {
         game->status = VCC_DROWNED;
-        game->last_event = VCC_EVENT_WATER;
+        game->last_event = VCC_EVENT_DEATH;
     } else if (tile == VCC_FIRE && game->boots[1] == 0U) {
         game->status = VCC_BURNED;
-        game->last_event = VCC_EVENT_FIRE;
+        game->last_event = VCC_EVENT_DEATH;
     } else if (tile == VCC_BOMB) {
         game->terrain[destination] = VCC_FLOOR;
         game->status = VCC_BOMBED;
         game->last_event = VCC_EVENT_BOMB;
     } else if (tile == VCC_THIEF) {
         memset(game->boots, 0, sizeof game->boots);
+        game->last_event = VCC_EVENT_THIEF;
     } else if (tile == VCC_GREEN_BUTTON) {
         toggle_walls(game);
         game->last_event = VCC_EVENT_BUTTON;
@@ -493,7 +496,7 @@ int vcc_game_start(vcc_game *game, const vcc_level *level)
     return found_player;
 }
 
-int vcc_game_move(vcc_game *game, vcc_direction direction)
+static int try_move(vcc_game *game, vcc_direction direction)
 {
     int x;
     int y;
@@ -527,6 +530,7 @@ int vcc_game_move(vcc_game *game, vcc_direction direction)
         return 0;
     if (game->actors[destination] != 0U) {
         game->status = VCC_COLLIDED;
+        game->last_event = VCC_EVENT_DEATH;
         return 0;
     }
     if (!enter_player_tile(game, destination))
@@ -534,11 +538,22 @@ int vcc_game_move(vcc_game *game, vcc_direction direction)
     game->player_x = (uint8_t)x;
     game->player_y = (uint8_t)y;
     game->timer_started = 1U;
+    ++game->moves;
     if (game->terrain[source] == VCC_POPUP_WALL)
         game->terrain[source] = VCC_WALL;
     if (game->terrain[destination] == VCC_TELEPORT)
         teleport_player(game, direction);
     return 1;
+}
+
+/* A refused voluntary step plays BlockedMoveSound (7:18B5). */
+int vcc_game_move(vcc_game *game, vcc_direction direction)
+{
+    int moved = try_move(game, direction);
+    if (!moved && game && game->status == VCC_PLAYING
+        && direction <= VCC_DIR_EAST && game->last_event == VCC_EVENT_NONE)
+        game->last_event = VCC_EVENT_BLOCKED;
+    return moved;
 }
 
 void vcc_game_tick(vcc_game *game, vcc_direction input)
@@ -550,9 +565,10 @@ void vcc_game_tick(vcc_game *game, vcc_direction input)
         && game->time_left_ticks > 0U) {
         --game->time_left_ticks;
         if ((game->time_left_ticks % 20U) == 0U && game->time_left_ticks <= 300U)
-            game->last_event = VCC_EVENT_CLOCK;
+            game->last_event = VCC_EVENT_TICK;
         if (game->time_left_ticks == 0U) {
             game->status = VCC_TIMEOUT;
+            game->last_event = VCC_EVENT_DEATH_TIME;
             return;
         }
     }
@@ -560,11 +576,11 @@ void vcc_game_tick(vcc_game *game, vcc_direction input)
         (void)vcc_game_move(game, input);
     else if ((game->ticks & 1U) == 0U) {
         vcc_direction forced = forced_direction(game);
-        if (forced != VCC_DIR_NONE && !vcc_game_move(game, forced)) {
+        if (forced != VCC_DIR_NONE && !try_move(game, forced)) {
             uint8_t tile = game->terrain[cell(game->player_x, game->player_y)];
             if (tile >= VCC_ICE && tile <= VCC_ICE_SW) {
                 game->player_direction = (uint8_t)((forced + 2U) & 3U);
-                (void)vcc_game_move(game, (vcc_direction)game->player_direction);
+                (void)try_move(game, (vcc_direction)game->player_direction);
             }
         }
     }
@@ -588,6 +604,13 @@ uint8_t vcc_game_terrain_tile(const vcc_game *game, uint8_t x, uint8_t y)
 uint8_t vcc_game_actor_tile(const vcc_game *game, uint8_t x, uint8_t y)
 {
     size_t index = cell(x, y);
+    /* Death tiles written over Chip at 7:1532 and 7:1538. */
+    if (x == game->player_x && y == game->player_y && game->status == VCC_DROWNED)
+        return UINT8_C(0x33);
+    if (x == game->player_x && y == game->player_y && game->status == VCC_BURNED)
+        return UINT8_C(0x34);
+    if (x == game->player_x && y == game->player_y && game->status == VCC_BOMBED)
+        return UINT8_C(0x35);
     if (x == game->player_x && y == game->player_y)
         return (uint8_t)(VCC_CHIP_N + game->player_direction);
     return game->actors[index];

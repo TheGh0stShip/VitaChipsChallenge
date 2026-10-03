@@ -20,22 +20,32 @@ typedef enum vcc_status {
     VCC_DROWNED,
     VCC_BURNED,
     VCC_BOMBED,
+    VCC_SQUASHED,
     VCC_COLLIDED,
     VCC_TIMEOUT
 } vcc_status;
 
+/* Sound events. Value - 1 is the original sound index used by the Win16
+ * player at 8:056C, whose names and default files are tabulated at
+ * DS:0336 and DS:040A. */
 typedef enum vcc_event {
     VCC_EVENT_NONE = 0,
-    VCC_EVENT_PICKUP,
-    VCC_EVENT_DOOR,
-    VCC_EVENT_BLOCKED,
-    VCC_EVENT_WATER,
-    VCC_EVENT_FIRE,
-    VCC_EVENT_BOMB,
-    VCC_EVENT_TELEPORT,
-    VCC_EVENT_COMPLETE,
-    VCC_EVENT_BUTTON,
-    VCC_EVENT_CLOCK
+    VCC_EVENT_TOOL,          /* 0  PickUpToolSound        blip2.wav */
+    VCC_EVENT_DOOR,          /* 1  OpenDoorSound          door.wav */
+    VCC_EVENT_DEATH,         /* 2  ChipDeathSound         bummer.wav */
+    VCC_EVENT_COMPLETE,      /* 3  LevelCompleteSound     ditty1.wav */
+    VCC_EVENT_SOCKET,        /* 4  SocketSound            chimes.wav */
+    VCC_EVENT_BLOCKED,       /* 5  BlockedMoveSound       oof3.wav */
+    VCC_EVENT_THIEF,         /* 6  ThiefSound             strike.wav */
+    VCC_EVENT_SOUND_ON,      /* 7  SoundOnSound           chimes.wav */
+    VCC_EVENT_CHIP,          /* 8  PickUpChipSound        click3.wav */
+    VCC_EVENT_BUTTON,        /* 9  SwitchSound            pop2.wav */
+    VCC_EVENT_SPLASH,        /* 10 SplashSound            water2.wav */
+    VCC_EVENT_BOMB,          /* 11 BombSound              hit3.wav */
+    VCC_EVENT_TELEPORT,      /* 12 TeleportSound          teleport.wav */
+    VCC_EVENT_TICK,          /* 13 TickSound              click1.wav */
+    VCC_EVENT_DEATH_TIME,    /* 14 ChipDeathByTimeSound   bell.wav */
+    VCC_EVENT_COUNT
 } vcc_event;
 
 enum vcc_tile {
@@ -129,6 +139,7 @@ typedef struct vcc_game {
     uint32_t ticks;
     uint8_t timer_started;
     uint32_t time_left_ticks;
+    uint16_t moves;  /* successful Chip steps, state+0xA34 (7:180F) */
     vcc_status status;
 } vcc_game;
 

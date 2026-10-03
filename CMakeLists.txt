@@ -11,7 +11,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-add_library(vcc_core STATIC src/dat.c src/game.c)
+add_library(vcc_core STATIC src/dat.c src/game.c src/score.c src/progress.c)
 target_include_directories(vcc_core PUBLIC include)
 target_compile_options(vcc_core PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
@@ -29,6 +29,18 @@ if(BUILD_TESTING)
   target_compile_options(vcc_game_tests PRIVATE
     -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
   add_test(NAME game_core COMMAND vcc_game_tests)
+
+  add_executable(vcc_score_tests tests/test_score.c)
+  target_link_libraries(vcc_score_tests PRIVATE vcc_core)
+  target_compile_options(vcc_score_tests PRIVATE
+    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  add_test(NAME score COMMAND vcc_score_tests)
+
+  add_executable(vcc_progress_tests tests/test_progress.c)
+  target_link_libraries(vcc_progress_tests PRIVATE vcc_core)
+  target_compile_options(vcc_progress_tests PRIVATE
+    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  add_test(NAME progress COMMAND vcc_progress_tests)
 
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT")
     add_executable(vcc_reference_dat_tests tests/test_reference_dat.c)
@@ -49,8 +61,10 @@ if(VCC_VITA)
     message(FATAL_ERROR "Extract original NE bitmaps into build-vita/assets first")
   endif()
   find_package(SDL2 CONFIG REQUIRED)
-  add_executable(vita_chips src/vita_main.c)
-  target_link_libraries(vita_chips PRIVATE vcc_core SDL2::SDL2)
+  find_package(SDL2_ttf CONFIG REQUIRED)
+  add_executable(vita_chips src/vita_main.c src/ui.c)
+  target_link_libraries(vita_chips PRIVATE vcc_core SDL2_ttf::SDL2_ttf-static
+    SDL2::SDL2 freetype png bz2 z)
   target_compile_options(vita_chips PRIVATE
     -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
   vita_create_self(vita_chips.self vita_chips)
@@ -63,6 +77,8 @@ if(VCC_VITA)
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/startup.png" "sce_sys/livearea/contents/startup.png"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/template.xml" "sce_sys/livearea/contents/template.xml"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT" "data/CHIPS.DAT"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/LiberationSans-Regular.ttf" "data/fonts/LiberationSans-Regular.ttf"
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/LiberationSans-Bold.ttf" "data/fonts/LiberationSans-Bold.ttf"
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_4_RGB.bmp" "data/OBJ32_4_RGB.bmp"
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_4E_RGB.bmp" "data/OBJ32_4E_RGB.bmp"
     FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_MASKED.bmp" "data/OBJ32_MASKED.bmp"

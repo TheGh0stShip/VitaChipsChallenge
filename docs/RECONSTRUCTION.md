@@ -55,6 +55,48 @@ Those systems remain partial because their Win16 movement phases and edge cases
 are not yet covered by reference traces. The detailed gate is in
 [`COMPATIBILITY.md`](COMPATIBILITY.md).
 
+## Level completion scoring
+
+`src/score.c` reconstructs the `DLG_COMPLETE` `WM_INITDIALOG` handler in
+code segment 6 (dialog procedure entry `6:03C9`, init case `6:0422`), located
+by its references to the `Time Bonus:  %d` format at `DS:0B83`.
+
+- Time bonus is seconds left times 10 (`6:042B`).
+- Level bonus starts at 500 times the level number (`6:0441`). For each failed
+  attempt it is multiplied by 4 and long-divided by 5, stopping as soon as it
+  first falls below 500; that sub-500 value is kept (`6:0466`-`6:0495`).
+- The headline is chosen by attempts: 0, 1-2, 3-4, and 5 or more select the
+  strings at `DS:0B34`, `0B47`, `0B56`, and `0B6B` (`6:04A6`).
+- A stored record is read only when the level does not exceed the stored
+  highest level (`6:0586`) and is ignored if its time or score is negative.
+  The saved record keeps the larger time left and larger score separately;
+  the running total grows by the score improvement only (`6:05C2`-`6:0613`).
+- A time improvement message (`DS:0BED`) takes precedence over a score
+  improvement message (`DS:0C22`); otherwise the line is blank. With no
+  stored record, the new-record message at `DS:0BB7` is shown.
+
+## Session flow, counters, and sounds
+
+- Death (`2:0B9A`): the message is chosen by death reason `state+0x816`
+  (1 fire, 2 water, 3 bomb, 4 block, 5 creature, 6 time) from `DS:0176`
+  through `DS:0234`, shown in a message box captioned `DS:0068`, and the
+  level reloads as a retry.
+- Level loader (`4:0356`): a retry increments attempts (`state+0xA30`). When
+  Chip took more than 30 steps (`state+0xA34`, incremented at `7:180F`) and
+  the level is not 144 or 149, a trouble counter (`state+0xA32`) also rises.
+  At 10 the loader asks `DS:090C` with Yes/No; Yes skips to the next level.
+- Clock (`7:05BD`): one second elapses per 10 engine ticks. The Tick sound
+  plays at 15 seconds or less; at zero ChipDeathByTime plays and death reason
+  6 applies.
+- Counters (`2:0CBE`, `2:29A6`, `9:00EA`): see `COMPATIBILITY.md`.
+- Sounds (`8:056C`): `sndPlaySound(name, SND_ASYNC | SND_NODEFAULT)`, so a
+  new sound replaces the current one. Sound indices and default files are
+  listed in `include/vcc/game.h`.
+- Dialogs call WEP4UTIL `GRAYDLGPROC` and `CENTERHWND` (ordinals 1202 and
+  103), so they have gray clients and are centered on the main window.
+- `tools/ne_disasm.py` produces listings with relocations resolved. Its
+  output is derived from the reference binary and stays under `reference/`.
+
 ## Confirmed interface resources
 
 The `CHIPSMENU` resource at file offset `0x3FC00` proves the original command

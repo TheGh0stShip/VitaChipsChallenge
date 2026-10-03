@@ -29,16 +29,17 @@ results.
 |---|---|---|
 | DAT parsing | Confirmed | All 149 records and every metadata type present in the supplied DAT parse successfully. |
 | Indexed palette | Confirmed | Exact 16 entry palettes come from `OBJ32_4`, `INFOWND`, `BACKGROUND`, `200`, and `CHIPEND`. |
-| Board and information panel | Implemented | Original 9 by 9 viewport and resources render in the Windows Vita3K build; physical Vita remains required. |
+| Board and information panel | Implemented | Counters follow `2:29A6`/`9:00EA`: leading zeros blank, yellow time at 15 seconds or less (yellow `---` when untimed), yellow chips at zero. |
+| Board viewport | Implemented | Original 9 by 9 viewport and resources render in the Windows Vita3K build; physical Vita remains required. |
 | Basic player interactions | Implemented | Floor, walls, chips, sockets, keys, doors, boots, thief, hazards, exit, dirt, and blocks exist. Reference traces remain incomplete. |
 | Clock | Implemented | Starts after Chip first moves, advances at 20 engine ticks per displayed count, changes to yellow and clicks at 15. Exact Win16 timer drift is not reproduced yet. |
 | Monsters | Partial | Nine families exist, but MS movement phases, collision order, slide delay, random behavior, and known MS edge cases remain unconfirmed. |
 | Sliding and force floors | Partial | Player movement exists. Block and monster sliding, boosting, spring steps, and slide delay remain incomplete. |
 | Traps and clone machines | Partial | DAT links and basic activation exist. Persistence of MS trap release and all movement ordering need reference traces. |
 | Teleports | Partial | Basic player search exists. Blocks, monsters, stuck exits, collision order, and teleport network edge cases remain incomplete. |
-| Progress, passwords, scores | Missing | Passwords parse, but dialogs, attempts, score integration, best times, save format, and level unlocking are absent. |
-| Menus and messages | Missing | Death, hint, completion, ending, menu, and dialog flows are absent. |
-| Sound effects | Implemented | Original WAV resources are packaged and mapped to an initial event set; exact trigger priority remains unconfirmed. |
+| Progress, passwords, scores | Partial | Level Complete dialog and scoring (`6:0422`), attempt counting and the skip-level prompt (`4:0356`), and `ENTPACK.INI`-format progress (`2:198E`-`2:1C9F`) are reconstructed. Password entry, Go To, and Best Times dialogs remain absent. |
+| Menus and messages | Partial | Death messages (`2:0B9A`), the trouble prompt, and Level Complete use Windows 3.1 style dialogs from the original templates. Hint display, pause, menus, and the ending sequence are absent. |
+| Sound effects | Partial | The 15-entry sound table (`DS:0336`, `DS:040A`) and interrupting `sndPlaySound` semantics (`8:056C`) are reproduced. System sounds absent from the archive stay silent as with `SND_NODEFAULT`. Some engine triggers await the engine reconstruction. |
 | Music | Missing | Both original MIDI resources are packaged but playback and the Background Music option are absent. |
 | Controls | Partial | D-pad movement and Cross restart/proceed exist. Pause, menus, password entry, help, and controller repeat are absent. |
 | ARM ABI release gate | Partial | VitaSDK produces ARMv7 code. Final dependency float ABI inspection and physical Vita/PSTV validation remain required. |

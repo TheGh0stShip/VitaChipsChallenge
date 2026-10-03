@@ -24,3 +24,12 @@ the GPL does not relicense those underlying materials.
 VitaSDK, SDL, Python, Pillow, CMake, Ninja, and Vita3K are separate projects
 distributed under their own licenses. Building or testing VitaChipsChallenge
 does not change those licenses.
+
+## Fonts
+
+`assets/fonts/LiberationSans-*.ttf` are Liberation Sans 2.1.5 from
+<https://github.com/liberationfonts/liberation-fonts>, licensed under the SIL
+Open Font License 1.1 (`assets/fonts/LICENSE-LiberationFonts.txt`). They
+stand in for the Windows 3.x "MS Sans Serif", Arial, and System fonts named
+by the original dialog templates and `DS:0598`, which are not part of the
+reference archive. Liberation Sans is metric-compatible with Arial.
