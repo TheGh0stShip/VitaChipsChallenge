@@ -10,6 +10,7 @@
 #include "help.h"
 #include "ui.h"
 #include <SDL2/SDL.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,8 +116,13 @@ typedef struct audio {
     int song_count;
 } audio;
 
+/* Performance counters written to the log once a second. */
+static volatile Uint64 audio_busy_ticks;
+static volatile Uint32 audio_calls;
+
 static void audio_callback(void *userdata, Uint8 *stream, int length)
 {
+    Uint64 start = SDL_GetPerformanceCounter();
     audio *a = userdata;
     int16_t *out = (int16_t *)stream;
     size_t frames = (size_t)length / sizeof(int16_t);
@@ -128,6 +134,30 @@ static void audio_callback(void *userdata, Uint8 *stream, int length)
         out[index] = (int16_t)(value > 32767 ? 32767 : (value < -32768 ? -32768 : value));
         if (a->position >= a->playing->length) a->playing = NULL;
     }
+    audio_busy_ticks += SDL_GetPerformanceCounter() - start;
+    ++audio_calls;
+}
+
+static FILE *log_file;
+
+static void log_open(void)
+{
+#ifdef __vita__
+    extern int sceIoMkdir(const char *, int);
+    (void)sceIoMkdir("ux0:data/VitaChipsChallenge", 0777);
+#endif
+    log_file = fopen("ux0:data/VitaChipsChallenge/log.txt", "w");
+}
+
+static void log_line(const char *format, ...)
+{
+    va_list args;
+    if (!log_file) return;
+    va_start(args, format);
+    (void)vfprintf(log_file, format, args);
+    va_end(args);
+    (void)fputc('\n', log_file);
+    (void)fflush(log_file);
 }
 
 static int load_sound(sample *out, const char *name)
@@ -1341,7 +1371,9 @@ int main(void)
     if (!load_graphics(a)) goto cleanup;
     if (!ui_init("app0:/data/fonts/LiberationSans-Regular.ttf",
             "app0:/data/fonts/LiberationSans-Bold.ttf")) goto cleanup;
-    (void)audio_init(&a->sound);
+    log_open();
+    log_line("start: audio %d, songs %d, music %s", audio_init(&a->sound),
+        a->sound.song_count, a->sound.music ? "yes" : "no");
     (void)help_load(a->renderer, "app0:/data/help");
     if (SDL_NumJoysticks() > 0 && SDL_IsGameController(0)) controller = SDL_GameControllerOpen(0);
 
@@ -1368,9 +1400,14 @@ int main(void)
     if (VCC_PREVIEW == 10) command_help(a, CMD_HELP_PLAY);
 #endif
     next_tick = SDL_GetTicks() + TICK_MS;
+    {
+    uint32_t log_time = SDL_GetTicks() + 1000U;
+    uint32_t frames = 0U;
+    Uint64 frame_ticks = 0U;
     while (!a->quit) {
         SDL_Event event;
         uint32_t now;
+        Uint64 frame_start = SDL_GetPerformanceCounter();
         while (SDL_PollEvent(&event)) {
             int id;
             if (event.type == SDL_QUIT) a->quit = 1;
@@ -1423,9 +1460,25 @@ int main(void)
             if ((int32_t)(now - next_tick) > 0) next_tick = now + TICK_MS;
         }
         render(a);
+        frame_ticks += SDL_GetPerformanceCounter() - frame_start;
+        ++frames;
+        if ((int32_t)(SDL_GetTicks() - log_time) >= 0) {
+            double frequency = (double)SDL_GetPerformanceFrequency();
+            log_line("level %d fps %u frame %.2f ms audio %.1f%% (%u calls) music %d sounds %d",
+                a->game.level->number, frames, frames ? (double)frame_ticks * 1000.0 / frequency / frames : 0.0,
+                (double)audio_busy_ticks * 100.0 / frequency, audio_calls, a->progress.music,
+                a->progress.sounds);
+            frames = 0U;
+            frame_ticks = 0U;
+            audio_busy_ticks = 0U;
+            audio_calls = 0U;
+            log_time += 1000U;
+        }
         SDL_Delay(4);
     }
+    }
 cleanup:
+    if (log_file) fclose(log_file);
     if (a->dat && a->game.level) progress_save(&a->progress);
     audio_quit(&a->sound);
     help_free();
