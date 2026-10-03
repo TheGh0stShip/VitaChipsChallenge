@@ -33,3 +33,10 @@ Open Font License 1.1 (`assets/fonts/LICENSE-LiberationFonts.txt`). They
 stand in for the Windows 3.x "MS Sans Serif", Arial, and System fonts named
 by the original dialog templates and `DS:0598`, which are not part of the
 reference archive. Liberation Sans is metric-compatible with Arial.
+
+## Music instruments
+
+`assets/music/GENMIDI.op2` is the OPL2 General MIDI instrument bank from
+Freedoom 0.13.0 (<https://freedoom.github.io/>), under the BSD 3-clause
+license in `assets/music/LICENSE-Freedoom.txt`. The FM synthesizer that
+plays it is original to this project.
