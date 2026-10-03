@@ -35,8 +35,12 @@ static void fill(SDL_Renderer *renderer, int x, int y, int w, int h)
 
 static void text_cache_flush(void);
 
+static char hint_font_path[256];
+static TTF_Font *hint_fonts[13];
+
 int ui_fonts_open(ui_fonts *fonts, const char *regular, const char *bold)
 {
+    (void)snprintf(hint_font_path, sizeof hint_font_path, "%s", bold);
     fonts->dialog = TTF_OpenFont(regular, 11 * TEXT_SCALE);
     fonts->caption = TTF_OpenFont(bold, 11 * TEXT_SCALE);
     if (fonts->dialog) TTF_SetFontHinting(fonts->dialog, TTF_HINTING_MONO);
@@ -46,7 +50,12 @@ int ui_fonts_open(ui_fonts *fonts, const char *regular, const char *bold)
 
 void ui_fonts_close(ui_fonts *fonts)
 {
+    int size;
     text_cache_flush();
+    for (size = 0; size < 13; ++size) {
+        if (hint_fonts[size]) TTF_CloseFont(hint_fonts[size]);
+        hint_fonts[size] = NULL;
+    }
     if (fonts->dialog) TTF_CloseFont(fonts->dialog);
     if (fonts->caption) TTF_CloseFont(fonts->caption);
     fonts->dialog = NULL;
@@ -177,8 +186,8 @@ static int wrap_text(TTF_Font *font, const char *text, int width,
 void ui_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
     SDL_Rect rect, ui_align align, SDL_Color color)
 {
-    char lines[8][UI_TEXT_CAPACITY];
-    int count = wrap_text(font, text, rect.w, lines, 8);
+    char lines[16][UI_TEXT_CAPACITY];
+    int count = wrap_text(font, text, rect.w, lines, 16);
     int line_h = font_line_skip(font);
     int index;
     for (index = 0; index < count; ++index) {
@@ -192,8 +201,8 @@ void ui_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
 
 static SDL_Rect measure_block(TTF_Font *font, const char *text, int max_width)
 {
-    char lines[8][UI_TEXT_CAPACITY];
-    int count = wrap_text(font, text, max_width, lines, 8);
+    char lines[16][UI_TEXT_CAPACITY];
+    int count = wrap_text(font, text, max_width, lines, 16);
     SDL_Rect size = {0, 0, 0, count * font_line_skip(font)};
     int index;
     for (index = 0; index < count; ++index) {
@@ -459,5 +468,34 @@ void ui_dialog_draw(SDL_Renderer *renderer, const ui_fonts *fonts, const ui_dial
             button->rect.w, button->rect.h};
         draw_button(renderer, fonts, button, rect,
             index == dialog->focus, index == dialog->focus);
+    }
+}
+
+static TTF_Font *hint_font(int points)
+{
+    if (!hint_fonts[points]) {
+        /* Points at 96 dpi, rasterized at the 1.5x panel scale. */
+        hint_fonts[points] = TTF_OpenFont(hint_font_path, points * 2);
+        if (hint_fonts[points]) {
+            TTF_SetFontStyle(hint_fonts[points], TTF_STYLE_ITALIC);
+            TTF_SetFontHinting(hint_fonts[points], TTF_HINTING_MONO);
+        }
+    }
+    return hint_fonts[points];
+}
+
+void ui_draw_hint(SDL_Renderer *renderer, const char *text, SDL_Rect rect)
+{
+    static const SDL_Color cyan = {0, 255, 255, 255};
+    int points;
+    for (points = 12; points >= 6; --points) {
+        TTF_Font *font = hint_font(points);
+        SDL_Rect block;
+        if (!font) continue;
+        block = measure_block(font, text, rect.w);
+        if (block.h <= rect.h || points == 6) {
+            ui_draw_text(renderer, font, text, rect, UI_CENTER, cyan);
+            return;
+        }
     }
 }

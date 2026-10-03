@@ -43,7 +43,21 @@ All metadata types present in the supplied 149-level file are parsed. Trap
 records use five little-endian 16-bit values, clone records use four, and each
 ordered creature position is an `(x, y)` byte pair.
 
-## Reconstructed gameplay slice
+## Engine reconstruction
+
+`src/game.c` is a function-by-function reconstruction of code segments 3
+and 7, laid out like the Win16 state block at `DS:1680`. The map has a top
+and a bottom layer: entering a cell copies its top tile down, and leaving
+it raises the bottom tile again unless that is a clone machine. Lists for
+monsters, sliding movers, toggle walls, traps, clone machines, and
+teleports mirror the originals at `state+0x91E` through `state+0x956`.
+
+The original ran its death message, Level Complete dialog, and level
+reload from inside the timer tick, so the rest of that tick then ran on
+the reloaded level. The port keeps this order. The engine calls hooks that
+run modal dialogs to completion and reload before returning.
+
+## Previous gameplay slice
 
 `src/game.c` is an independent fixed-width C implementation. The current slice
 reconstructs map layering, player direction and collision, thin walls, movable

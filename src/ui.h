@@ -68,4 +68,8 @@ void ui_dialog_draw(SDL_Renderer *renderer, const ui_fonts *fonts, const ui_dial
 void ui_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
     SDL_Rect rect, ui_align align, SDL_Color color);
 
+/* Hint window text (2:2CBA): Arial bold italic in cyan, starting at 12 pt
+ * and shrinking a point at a time until DT_WORDBREAK text fits, down to 6. */
+void ui_draw_hint(SDL_Renderer *renderer, const char *text, SDL_Rect rect);
+
 #endif

@@ -45,7 +45,7 @@ IMPORTS = {
         39: "BeginPaint", 40: "EndPaint", 41: "CreateWindow",
         42: "ShowWindow", 53: "DestroyWindow", 57: "RegisterClass",
         61: "ScrollWindow", 66: "GetDC", 68: "ReleaseDC", 69: "SetCursor",
-        78: "InflateRect?", 85: "DrawIcon", 87: "DialogBox",
+        78: "InflateRect?", 84: "DrawIcon", 85: "DrawText", 87: "DialogBox",
         88: "EndDialog", 91: "GetDlgItem", 92: "SetDlgItemText",
         93: "GetDlgItemText", 95: "GetDlgItemInt",
         101: "SendDlgItemMessage", 102: "AdjustWindowRect",
