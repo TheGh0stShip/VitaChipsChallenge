@@ -13,10 +13,10 @@ used for compilation only; the Linux Vita3K build is excluded from this check.
 - The first run exposed the row-major sprite lookup error. The retest used the
   corrected column-major layout of the original 416 by 512 bitmap.
 
-![Windows Vita3K gameplay capture](images/vita3k-gameplay.png)
+
 
 This emulator result verifies packaging, startup, rendering, and basic input.
-It does not replace the physical Vita acceptance gate in `AGENTS.md`.
+It does not replace testing on PS Vita hardware.
 
 ## October 3, 2026: hardware colour check
 

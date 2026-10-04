@@ -7,12 +7,12 @@ Git. The supported reference archive has SHA-256:
 ffbb83dc4ca5cc9e8cbf78271b44a42ea4e7db2f4f8d1953383390acf94e7ddf
 ```
 
-Run:
+For a personal build, run `python3 tools/build_vita.py`. For analysis:
 
 ```sh
 python3 tools/extract_reference.py reference/chips_challenge.zip
-python3 tools/ne_inventory.py reference/extracted/CHIPS.EXE \
-  build/reference/chips-ne.json
+python3 tools/ne_disasm.py reference/extracted/CHIPS.EXE \
+  docs/reference-inventory.json reference/disasm
 ```
 
 The Windows executable fingerprint is:

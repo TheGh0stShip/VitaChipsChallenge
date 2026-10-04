@@ -1,104 +1,105 @@
-# VitaChipsChallenge
+# Vita Chips Challenge
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-![Chip's Challenge retail artwork](assets/branding/chips-challenge-retail.png)
+A native PS Vita port of the Microsoft Windows 3.x version of
+**Chip's Challenge**, rebuilt in C from the original 16-bit Windows program.
 
-![Vita3K gameplay using the original Windows sprite sheet](docs/images/vita3k-gameplay.png)
+![Gameplay](docs/images/gameplay.png)
 
-A clean source reconstruction and native PS Vita port of the Microsoft Windows
-3.x version of **Chip's Challenge**.
+The game logic, menus, dialogs, scoring, saves, help, sound, music, and
+ending follow the Windows release: all 149 levels, the original monster
+behaviour and timing, passwords, Best Times, the Level Complete dialog, the
+hint window, and the original 16-colour graphics. Notes on how each part was
+reconstructed are in [`docs/RECONSTRUCTION.md`](docs/RECONSTRUCTION.md), and
+the per-feature status is in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
 
-## Status
-
-Reverse engineering is in progress from the original 16-bit Windows NE
-executable. The repository builds a native Vita VPK which loads all 149
-original levels, renders the original Windows resources and 16 color palette,
-accepts Vita controls, and runs a growing reconstructed gameplay core. It is a
-development preview. Monster timing and edge cases, complete sliding behavior,
-teleports, traps, clone machines, scoring, music, saves, menus, dialogs, and
-reference-accurate progression still need completion.
-
-The evidence and feature gate are maintained in
-[`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). It is the authoritative list
-of what is confirmed, partial, or missing.
-
-This project does not use Tile World or another clone as its gameplay engine.
-Every reconstructed subsystem will be tied to behavior or code observed in the
-reference executable and verified independently.
-
-## Reference build
-
-| File | SHA-256 |
+| | |
 |---|---|
-| `chips_challenge.zip` | `ffbb83dc4ca5cc9e8cbf78271b44a42ea4e7db2f4f8d1953383390acf94e7ddf` |
-| `CHIPS.EXE` | `8e26acd67cf120bd5b512de4b4e78b80aca1579413cd04f3b2b68909a375866c` |
-| `CHIPS.DAT` | `b0a68f21642447385512e0ed9386a4a13a4f7e9a38f909da772104d8e6b5c1fb` |
-| `WEP4UTIL.DLL` | `40a405813946caac1aa2ec3e31fa570de1c418f8db43182d614e0bac4e1978cb` |
+| ![Help](docs/images/help.png) | ![Best Times](docs/images/best-times.png) |
 
-The original files are not distributed by this repository. See
-[`reference/README.md`](reference/README.md) for local setup.
+## You need your own copy of the game
 
-## Target
+The VPK contains no Chip's Challenge game data. You need the Windows 3.x
+release of Chip's Challenge (from Microsoft Entertainment Pack / Best of
+Windows Entertainment Pack), with these files:
 
-The Vita is little-endian ARMv7-A with a 32-bit ILP32 ABI. The original program
-is 16-bit x86 code using the Windows 3.x NE segmented executable format. The
-port translates reconstructed game logic into portable fixed-width C and uses
-a Vita-native platform layer for rendering, input, audio, storage, and lifecycle
-events.
+`CHIPS.EXE`, `CHIPS.DAT`, `CHIPS.HLP`, `WEP4UTIL.DLL`, `CHIP01.MID`,
+`CHIP02.MID`, `BLIP2.WAV`, `BUMMER.WAV`, `CLICK3.WAV`, `DITTY1.WAV`,
+`DOOR.WAV`, `OOF3.WAV`, `POP2.WAV`, `STRIKE.WAV`, `TELEPORT.WAV`,
+`WATER2.WAV`
 
-## Roadmap
+Each file is checked against the supported release; the expected SHA-256
+values are in [`tools/extract_reference.py`](tools/extract_reference.py).
 
-1. Inventory NE segments, resources, imports, exports, and relocation records.
-2. Reconstruct DAT loading, game state, tile interactions, timing, and movement.
-3. Match reference behavior with host-side differential fixtures.
-4. Implement Vita graphics, controls, audio, persistence, and LiveArea assets.
-5. Validate ARMv7-A ABI attributes and complete physical Vita/PSTV testing.
+## Installing
 
-No gold release will be declared until the reconstructed engine passes the
-behavior corpus and the exact VPK passes the physical-device checklist.
+1. Install `VitaChipsChallenge.vpk` from the
+   [latest release](https://github.com/TheGh0stShip/VitaChipsChallenge/releases/latest)
+   with VitaShell.
+2. Make the data pack on your PC (Python 3 and Pillow):
 
-## Personal Vita build
+   ```sh
+   python3 -m pip install Pillow
+   python3 tools/make_datapack.py path/to/chips_challenge.zip
+   ```
 
-Install VitaSDK, place the verified `chips_challenge.zip` in `reference/`, then
-run:
+   The source can be a .zip or a folder with the files above. The pack is
+   written to `build-vita/datapack/VitaChipsChallenge`.
+3. Copy that `VitaChipsChallenge` folder to `ux0:data/` on the Vita, for
+   example over VitaShell's FTP server, so you end up with
+   `ux0:data/VitaChipsChallenge/data/CHIPS.DAT`.
+
+Progress is saved in `ux0:data/VitaChipsChallenge/entpack.ini`, the same
+format the Windows game kept in `ENTPACK.INI`.
+
+## Controls
+
+| Vita | Windows | Action |
+|---|---|---|
+| D-pad | Arrow keys | Move Chip |
+| Touch the board | Mouse click | Walk Chip toward a square |
+| Start | Alt / F10 | Menu bar |
+| Select | F3 | Pause |
+| Triangle | Ctrl+R | Restart level |
+| L / R | Ctrl+P / Ctrl+N | Previous / next level |
+| Cross / Circle | Enter / Esc | Dialog buttons |
+
+Text fields in Go To and Password Entry open the Vita keyboard. Sound
+Effects and Background Music start switched off, as in the original; turn
+them on from the Options menu.
+
+## Building
+
+Requires [VitaSDK](https://vitasdk.org/) with SDL2 and SDL2_ttf, CMake,
+Ninja, and Python 3 with Pillow.
 
 ```sh
-python3 -m pip install Pillow
-python3 tools/build_vita.py
+python3 tools/build_vita.py --release      # VPK without game data
+python3 tools/build_vita.py --source path/to/chips_challenge.zip
+                                           # VPK with your game data inside
 ```
 
-The result is `build-vita/VitaChipsChallenge.vpk`. The build extracts the DAT
-and sprite sheet locally from the supplied Windows release. The bubble icon,
-splash, and LiveArea background combine the original Windows sprites with
-archived retail imagery recorded in `assets/branding/README.md`. Original game
-data and generated packages stay ignored by Git.
-
-### Controls
-
-| Control | Action |
-|---|---|
-| D-pad | Move Chip |
-| Cross | Restart after failure; continue after completion |
-
-## Host reconstruction build
+Host tests for the game core:
 
 ```sh
-cmake -S . -B build-host -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake -S . -B build-host -G Ninja
 cmake --build build-host
+ctest --test-dir build-host
 ```
+
+## Music
+
+The game's MIDI songs are played by a built-in OPL2-style FM synthesizer
+using the base-level channels a Windows 3.1 FM sound card received, with
+the Freedoom GENMIDI instrument bank.
 
 ## License
 
-Copyright © 2026 VitaChipsChallenge contributors.
+The source code is licensed under the **GNU General Public License,
+version 3 only**; see [`LICENSE`](LICENSE).
 
-The source code and original project documentation are free software licensed
-under the **GNU General Public License, version 3 only** (`GPL-3.0-only`). You
-may redistribute and modify them under GPLv3. The complete, unmodified license
-text is in [`LICENSE`](LICENSE).
-
-Chip's Challenge game data, names, characters, screenshots, retail artwork,
-and other third-party material remain the property of their respective rights
-holders. They are not relicensed under GPLv3. See
-[`assets/branding/README.md`](assets/branding/README.md) for provenance and
-[`THIRD_PARTY.md`](THIRD_PARTY.md) for the repository licensing boundary.
+Chip's Challenge names, characters, game data, and artwork belong to their
+respective rights holders and are not covered by the GPL. Fonts and the
+instrument bank are under their own licenses; see
+[`THIRD_PARTY.md`](THIRD_PARTY.md).

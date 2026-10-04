@@ -2,7 +2,7 @@
 
 These images identify the original commercial game and provide source material
 for the repository header and the Vita bubble, splash, and LiveArea background.
-They are retained at their downloaded resolution without AI generation.
+They are retained unmodified at their downloaded resolution.
 
 | File | Description | Source |
 |---|---|---|

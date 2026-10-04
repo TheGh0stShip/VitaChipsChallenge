@@ -37,6 +37,15 @@
 #define REPEAT_RATE_MS 33U
 #define AUDIO_RATE 22050
 
+/* Game data comes from the player's own copy of Chip's Challenge. A
+ * personal build packages it in the VPK; a release build reads the data
+ * pack made by tools/make_datapack.py from ux0:data/VitaChipsChallenge. */
+#ifdef VCC_EXTERNAL_DATA
+#define GAME_DATA "ux0:data/VitaChipsChallenge/data/"
+#else
+#define GAME_DATA "app0:/data/"
+#endif
+
 /* Menu command identifiers from the CHIPSMENU resource. */
 enum {
     CMD_ABOUT = 100, CMD_EXIT = 106, CMD_HELP_CONTENTS = 107, CMD_HELP_USE = 109,
@@ -146,6 +155,10 @@ static void log_open(void)
     extern int sceIoMkdir(const char *, int);
     (void)sceIoMkdir("ux0:data/VitaChipsChallenge", 0777);
 #endif
+    /* Timing logs are written only when ux0:data/VitaChipsChallenge/debug exists. */
+    FILE *flag = fopen("ux0:data/VitaChipsChallenge/debug", "r");
+    if (!flag) return;
+    fclose(flag);
     log_file = fopen("ux0:data/VitaChipsChallenge/log.txt", "w");
 }
 
@@ -167,7 +180,7 @@ static int load_sound(sample *out, const char *name)
     uint8_t *data = NULL;
     uint32_t length = 0U;
     SDL_AudioCVT cvt;
-    (void)snprintf(path, sizeof path, "app0:/data/%s", name);
+    (void)snprintf(path, sizeof path, GAME_DATA "%s", name);
     if (!SDL_LoadWAV(path, &source, &data, &length)) return 0;
     if (SDL_BuildAudioCVT(&cvt, source.format, source.channels, source.freq,
             AUDIO_S16SYS, 1, AUDIO_RATE) < 0) {
@@ -208,7 +221,7 @@ static int audio_init(audio *a)
     }
     for (index = 0U; index < 3U; ++index) {
         char path[64];
-        (void)snprintf(path, sizeof path, "app0:/data/%s", music_files[index]);
+        (void)snprintf(path, sizeof path, GAME_DATA "%s", music_files[index]);
         a->songs[a->song_count] = read_file(path, &a->song_sizes[a->song_count]);
         if (a->songs[a->song_count]) ++a->song_count;
     }
@@ -1317,21 +1330,43 @@ static int load_graphics(app *a)
     int access;
     Uint32 format;
     graphics *g = &a->gfx;
-    g->tiles = load_bmp(a->renderer, "app0:/data/OBJ32_4_RGB.bmp", 0);
-    g->tiles_mono = load_bmp(a->renderer, "app0:/data/OBJ32_1_RGB.bmp", 0);
-    g->actors = load_bmp(a->renderer, "app0:/data/OBJ32_MASKED.bmp", 1);
-    g->background = load_bmp(a->renderer, "app0:/data/BACKGROUND_RGB.bmp", 0);
-    g->info = load_bmp(a->renderer, "app0:/data/INFOWND_RGB.bmp", 0);
-    g->digits = load_bmp(a->renderer, "app0:/data/200_RGB.bmp", 0);
-    g->chipend = load_bmp(a->renderer, "app0:/data/CHIPEND_RGB.bmp", 0);
-    g->banner = load_bmp(a->renderer, "app0:/data/WEP_666_RGB.bmp", 0);
-    g->icon = load_bmp(a->renderer, "app0:/data/ICON_RGB.bmp", 1);
+    g->tiles = load_bmp(a->renderer, GAME_DATA "OBJ32_4_RGB.bmp", 0);
+    g->tiles_mono = load_bmp(a->renderer, GAME_DATA "OBJ32_1_RGB.bmp", 0);
+    g->actors = load_bmp(a->renderer, GAME_DATA "OBJ32_MASKED.bmp", 1);
+    g->background = load_bmp(a->renderer, GAME_DATA "BACKGROUND_RGB.bmp", 0);
+    g->info = load_bmp(a->renderer, GAME_DATA "INFOWND_RGB.bmp", 0);
+    g->digits = load_bmp(a->renderer, GAME_DATA "200_RGB.bmp", 0);
+    g->chipend = load_bmp(a->renderer, GAME_DATA "CHIPEND_RGB.bmp", 0);
+    g->banner = load_bmp(a->renderer, GAME_DATA "WEP_666_RGB.bmp", 0);
+    g->icon = load_bmp(a->renderer, GAME_DATA "ICON_RGB.bmp", 1);
     g->board = SDL_CreateTexture(a->renderer, SDL_PIXELFORMAT_RGBA8888,
         SDL_TEXTUREACCESS_TARGET, BOARD_SIZE, BOARD_SIZE);
     if (!g->tiles || !g->actors || !g->background || !g->info || !g->digits || !g->board)
         return 0;
     (void)SDL_QueryTexture(g->background, &format, &access, &g->background_w, &g->background_h);
     return 1;
+}
+
+/* Shown when the data pack is missing or incomplete. */
+static void missing_data(app *a)
+{
+    ui_dialog dialog;
+    int done = 0;
+    ui_message_box(&dialog, "Vita Chips Challenge",
+        "The Chip's Challenge game files were not found.\n\n"
+        "Make a data pack from your copy of the game with tools/make_datapack.py "
+        "and copy its VitaChipsChallenge folder to ux0:data/.", 0, 3);
+    while (!done) {
+        SDL_Event event;
+        ui_notify notify;
+        while (SDL_PollEvent(&event))
+            if (event.type == SDL_QUIT || ui_dialog_event(&dialog, &event, &notify)) done = 1;
+        SDL_SetRenderDrawColor(a->renderer, 0, 128, 128, 255);
+        SDL_RenderClear(a->renderer);
+        ui_dialog_draw(a->renderer, &dialog);
+        SDL_RenderPresent(a->renderer);
+        SDL_Delay(16);
+    }
 }
 
 static void free_graphics(graphics *g)
@@ -1354,12 +1389,6 @@ int main(void)
     uint32_t next_repeat = 0U;
     uint32_t next_tick;
     int index;
-    bytes = read_file("app0:/data/CHIPS.DAT", &size);
-    a->dat = malloc(sizeof *a->dat);
-    if (!bytes || !a->dat || vcc_dat_parse(a->dat, bytes, size) != VCC_DAT_OK
-        || a->dat->level_count == 0U) goto cleanup;
-    free(bytes);
-    bytes = NULL;
     (void)SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) goto cleanup;
     if (TTF_Init() != 0) goto cleanup;
@@ -1368,13 +1397,21 @@ int main(void)
     a->renderer = window ? SDL_CreateRenderer(window, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE) : NULL;
     if (!a->renderer || SDL_RenderSetScale(a->renderer, 1.5f, 1.5f) != 0) goto cleanup;
-    if (!load_graphics(a)) goto cleanup;
     if (!ui_init("app0:/data/fonts/LiberationSans-Regular.ttf",
             "app0:/data/fonts/LiberationSans-Bold.ttf")) goto cleanup;
+    bytes = read_file(GAME_DATA "CHIPS.DAT", &size);
+    a->dat = malloc(sizeof *a->dat);
+    if (!bytes || !a->dat || vcc_dat_parse(a->dat, bytes, size) != VCC_DAT_OK
+        || a->dat->level_count == 0U || !load_graphics(a)) {
+        missing_data(a);
+        goto cleanup;
+    }
+    free(bytes);
+    bytes = NULL;
     log_open();
     log_line("start: audio %d, songs %d, music %s", audio_init(&a->sound),
         a->sound.song_count, a->sound.music ? "yes" : "no");
-    (void)help_load(a->renderer, "app0:/data/help");
+    (void)help_load(a->renderer, GAME_DATA "help");
     if (SDL_NumJoysticks() > 0 && SDL_IsGameController(0)) controller = SDL_GameControllerOpen(0);
 
     a->game.hooks.context = a;

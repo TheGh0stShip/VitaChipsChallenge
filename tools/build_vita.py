@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Create a personal VPK from the supplied original Windows archive."""
+"""Build the Vita VPK.
+
+A personal build packages the game data from your copy of Chip's Challenge;
+--release builds the distributable VPK, which reads the data pack instead.
+"""
 
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
@@ -20,24 +25,21 @@ def run(*command: object) -> None:
 
 
 def main() -> None:
-    archive = ROOT / "reference/chips_challenge.zip"
-    if not archive.exists():
-        sys.exit(f"missing {archive}; see reference/README.md")
-    build = ROOT / "build-vita"
-    assets = build / "assets"
-    vita_assets = ROOT / "assets/vita"
-    run(sys.executable, "tools/extract_reference.py", archive, "reference/extracted")
-    run(sys.executable, "tools/extract_ne_resources.py", "reference/extracted/CHIPS.EXE",
-        "docs/reference-inventory.json", assets)
-    run(sys.executable, "tools/extract_ne_resources.py", "reference/extracted/WEP4UTIL.DLL",
-        "docs/wep4util-inventory.json", assets, "--prefix", "WEP_")
-    run(sys.executable, "tools/prepare_runtime_assets.py", assets)
-    run(sys.executable, "tools/convert_help.py", "reference/extracted/CHIPS.HLP", assets / "help")
-    run(sys.executable, "tools/build_vita_assets.py", assets, vita_assets,
-        "--branding", "assets/branding")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--release", action="store_true",
+                        help="build a VPK without game data that reads the data pack")
+    parser.add_argument("--source", type=Path, default=ROOT / "reference/chips_challenge.zip",
+                        help="your copy of the game, for a personal build")
+    args = parser.parse_args()
+    build = ROOT / ("build-vita-release" if args.release else "build-vita")
+    if not args.release:
+        if not args.source.exists():
+            sys.exit(f"missing {args.source}; see README.md")
+        run(sys.executable, "tools/make_datapack.py", args.source, build / "datapack")
     run("cmake", "-S", ".", "-B", build, "-G", "Ninja",
         f"-DCMAKE_TOOLCHAIN_FILE={VITASDK / 'share/vita.toolchain.cmake'}",
-        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF")
+        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF",
+        f"-DVCC_RELEASE={'ON' if args.release else 'OFF'}")
     run("cmake", "--build", build)
     print(build / "VitaChipsChallenge.vpk")
 

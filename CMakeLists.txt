@@ -57,12 +57,7 @@ if(BUILD_TESTING)
 endif()
 
 if(VCC_VITA)
-  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT")
-    message(FATAL_ERROR "Run tools/extract_reference.py before a personal Vita build")
-  endif()
-  if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_4.bmp")
-    message(FATAL_ERROR "Extract original NE bitmaps into build-vita/assets first")
-  endif()
+  option(VCC_RELEASE "Build a VPK without game data; it reads the data pack" OFF)
   find_package(SDL2 CONFIG REQUIRED)
   find_package(SDL2_ttf CONFIG REQUIRED)
   add_executable(vita_chips src/vita_main.c src/ui.c src/help.c)
@@ -71,12 +66,23 @@ if(VCC_VITA)
   target_compile_options(vita_chips PRIVATE
     -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
   vita_create_self(vita_chips.self vita_chips)
-  file(GLOB VCC_HELP_FILES "${CMAKE_CURRENT_BINARY_DIR}/assets/help/*")
-  set(VCC_HELP_VPK_FILES)
-  foreach(help_file ${VCC_HELP_FILES})
-    get_filename_component(help_name "${help_file}" NAME)
-    list(APPEND VCC_HELP_VPK_FILES FILE "${help_file}" "data/help/${help_name}")
-  endforeach()
+
+  # Game data from the player's copy of Chip's Challenge, prepared by
+  # tools/make_datapack.py into build-vita/datapack/VitaChipsChallenge/data.
+  set(VCC_GAME_FILES)
+  if(VCC_RELEASE)
+    target_compile_definitions(vita_chips PRIVATE VCC_EXTERNAL_DATA)
+  else()
+    set(VCC_DATAPACK "${CMAKE_CURRENT_BINARY_DIR}/datapack/VitaChipsChallenge/data")
+    if(NOT EXISTS "${VCC_DATAPACK}/CHIPS.DAT")
+      message(FATAL_ERROR "Run tools/make_datapack.py before a personal Vita build")
+    endif()
+    file(GLOB_RECURSE VCC_DATA_FILES RELATIVE "${VCC_DATAPACK}" "${VCC_DATAPACK}/*")
+    foreach(data_file ${VCC_DATA_FILES})
+      list(APPEND VCC_GAME_FILES FILE "${VCC_DATAPACK}/${data_file}" "data/${data_file}")
+    endforeach()
+  endif()
+
   vita_create_vpk(VitaChipsChallenge.vpk "VITA00001" vita_chips.self
     VERSION "01.00"
     NAME "Vita Chips Challenge"
@@ -85,31 +91,8 @@ if(VCC_VITA)
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/bg0.png" "sce_sys/livearea/contents/bg0.png"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/startup.png" "sce_sys/livearea/contents/startup.png"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/vita/template.xml" "sce_sys/livearea/contents/template.xml"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT" "data/CHIPS.DAT"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/LiberationSans-Regular.ttf" "data/fonts/LiberationSans-Regular.ttf"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/LiberationSans-Bold.ttf" "data/fonts/LiberationSans-Bold.ttf"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_4_RGB.bmp" "data/OBJ32_4_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_4E_RGB.bmp" "data/OBJ32_4E_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_MASKED.bmp" "data/OBJ32_MASKED.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/BACKGROUND_RGB.bmp" "data/BACKGROUND_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/INFOWND_RGB.bmp" "data/INFOWND_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/200_RGB.bmp" "data/200_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/CHIPEND_RGB.bmp" "data/CHIPEND_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/OBJ32_1_RGB.bmp" "data/OBJ32_1_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/ICON_RGB.bmp" "data/ICON_RGB.bmp"
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/assets/WEP_666_RGB.bmp" "data/WEP_666_RGB.bmp"
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/music/GENMIDI.op2" "data/GENMIDI.op2"
-    ${VCC_HELP_VPK_FILES}
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/BLIP2.WAV" "data/BLIP2.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/BUMMER.WAV" "data/BUMMER.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CLICK3.WAV" "data/CLICK3.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/DITTY1.WAV" "data/DITTY1.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/DOOR.WAV" "data/DOOR.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/OOF3.WAV" "data/OOF3.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/POP2.WAV" "data/POP2.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/STRIKE.WAV" "data/STRIKE.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/TELEPORT.WAV" "data/TELEPORT.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/WATER2.WAV" "data/WATER2.WAV"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIP01.MID" "data/CHIP01.MID"
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIP02.MID" "data/CHIP02.MID")
+    ${VCC_GAME_FILES})
 endif()
