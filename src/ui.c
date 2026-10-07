@@ -87,13 +87,52 @@ int ui_line_height(TTF_Font *font)
     return TO_LOGICAL(TTF_FontLineSkip(font));
 }
 
+/* FNV-1a; used to reject cache mismatches before comparing strings. */
+static Uint32 text_hash(const char *text, size_t *out_length)
+{
+    Uint32 hash = 2166136261u;
+    size_t length = 0U;
+    while (text[length]) {
+        hash ^= (Uint8)text[length++];
+        hash *= 16777619u;
+    }
+    if (out_length) *out_length = length;
+    return hash;
+}
+
+/* Measured widths, direct-mapped by hash; TTF_SizeText walks every glyph. */
+#define WIDTH_CACHE 256
+
+typedef struct width_entry {
+    TTF_Font *font;
+    Uint32 hash;
+    int w;
+    char text[UI_TEXT_CAPACITY];
+} width_entry;
+
+static width_entry width_cache[WIDTH_CACHE];
+
 int ui_text_width(TTF_Font *font, const char *text)
 {
     int w = 0;
     int h = 0;
-    if (!font || !text[0]) return 0;
+    size_t length;
+    Uint32 hash;
+    width_entry *entry;
+    if (!font || !text || !text[0]) return 0;
+    hash = text_hash(text, &length);
+    entry = &width_cache[hash % WIDTH_CACHE];
+    if (entry->font == font && entry->hash == hash && strcmp(entry->text, text) == 0)
+        return entry->w;
     (void)TTF_SizeText(font, text, &w, &h);
-    return TO_LOGICAL(w);
+    w = TO_LOGICAL(w);
+    if (length < sizeof entry->text) {
+        entry->font = font;
+        entry->hash = hash;
+        entry->w = w;
+        memcpy(entry->text, text, length + 1U);
+    }
+    return w;
 }
 
 /* Rasterized strings are cached; the screen redraws every frame. */
@@ -102,6 +141,7 @@ int ui_text_width(TTF_Font *font, const char *text)
 typedef struct text_entry {
     TTF_Font *font;
     Uint32 color;
+    Uint32 hash;
     char text[UI_TEXT_CAPACITY];
     SDL_Texture *texture;
     int w;
@@ -112,6 +152,25 @@ typedef struct text_entry {
 static text_entry text_cache[TEXT_CACHE];
 static Uint32 text_clock;
 
+#define WRAP_CACHE 8
+#define WRAP_LINES 24
+#define WRAP_SOURCE 512
+
+typedef struct wrap_entry {
+    TTF_Font *font;
+    int width;
+    Uint32 hash;
+    Uint32 used;
+    int count;
+    int widest;
+    char source[WRAP_SOURCE];
+    int widths[WRAP_LINES];
+    char lines[WRAP_LINES][UI_TEXT_CAPACITY];
+} wrap_entry;
+
+static wrap_entry wrap_cache[WRAP_CACHE];
+static Uint32 wrap_clock;
+
 static void text_cache_flush(void)
 {
     int index;
@@ -119,6 +178,20 @@ static void text_cache_flush(void)
         if (text_cache[index].texture) SDL_DestroyTexture(text_cache[index].texture);
         memset(&text_cache[index], 0, sizeof text_cache[index]);
     }
+    /* Font pointers may be reused after TTF_CloseFont. */
+    memset(width_cache, 0, sizeof width_cache);
+    memset(wrap_cache, 0, sizeof wrap_cache);
+}
+
+static void blit_text(SDL_Renderer *renderer, SDL_Texture *texture, int w, int h, int x, int y)
+{
+    SDL_FRect target;
+    /* Snap to the panel grid: logical x maps to panel pixel floor(1.5x). */
+    target.x = (float)(x * 3 / 2) / 1.5f;
+    target.y = (float)(y * 3 / 2) / 1.5f;
+    target.w = (float)w / 1.5f;
+    target.h = (float)h / 1.5f;
+    (void)SDL_RenderCopyF(renderer, texture, NULL, &target);
 }
 
 void ui_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y,
@@ -126,13 +199,15 @@ void ui_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, in
 {
     Uint32 key = ((Uint32)color.r << 16) | ((Uint32)color.g << 8) | color.b;
     text_entry *slot = &text_cache[0];
-    SDL_FRect target;
+    size_t length;
+    Uint32 hash;
     int index;
-    if (!font || !text[0]) return;
+    if (!renderer || !font || !text || !text[0]) return;
+    hash = text_hash(text, &length);
     for (index = 0; index < TEXT_CACHE; ++index) {
         text_entry *entry = &text_cache[index];
-        if (entry->texture && entry->font == font && entry->color == key
-            && strcmp(entry->text, text) == 0) {
+        if (entry->texture && entry->hash == hash && entry->font == font
+            && entry->color == key && strcmp(entry->text, text) == 0) {
             slot = entry;
             goto draw;
         }
@@ -141,11 +216,22 @@ void ui_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, in
     {
         SDL_Surface *surface = TTF_RenderText_Solid(font, text, color);
         if (!surface) return;
+        if (length >= sizeof slot->text) {
+            /* Too long to key exactly: draw once without evicting entries. */
+            SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+            if (texture) {
+                blit_text(renderer, texture, surface->w, surface->h, x, y);
+                SDL_DestroyTexture(texture);
+            }
+            SDL_FreeSurface(surface);
+            return;
+        }
         if (slot->texture) SDL_DestroyTexture(slot->texture);
         slot->texture = SDL_CreateTextureFromSurface(renderer, surface);
         slot->font = font;
         slot->color = key;
-        (void)snprintf(slot->text, sizeof slot->text, "%s", text);
+        slot->hash = hash;
+        memcpy(slot->text, text, length + 1U);
         slot->w = surface->w;
         slot->h = surface->h;
         SDL_FreeSurface(surface);
@@ -153,12 +239,7 @@ void ui_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, in
     }
 draw:
     slot->used = ++text_clock;
-    /* Snap to the panel grid: logical x maps to panel pixel floor(1.5x). */
-    target.x = (float)(x * 3 / 2) / 1.5f;
-    target.y = (float)(y * 3 / 2) / 1.5f;
-    target.w = (float)slot->w / 1.5f;
-    target.h = (float)slot->h / 1.5f;
-    (void)SDL_RenderCopyF(renderer, slot->texture, NULL, &target);
+    blit_text(renderer, slot->texture, slot->w, slot->h, x, y);
 }
 
 /* Splits text into lines no wider than `width`, like DT_WORDBREAK. */
@@ -174,23 +255,43 @@ static int wrap_text(TTF_Font *font, const char *text, int width,
         if (*cursor == '\r') { ++cursor; continue; }
         while (*word && *word != '\n' && *word != '\r') {
             const char *end = word;
-            char candidate[UI_TEXT_CAPACITY];
-            size_t length;
+            size_t span;
+            size_t trimmed;
             while (*end && *end != ' ' && *end != '\n' && *end != '\r') ++end;
             while (*end == ' ') ++end;
-            if (used + (size_t)(end - word) >= sizeof candidate) break;
-            memcpy(candidate, line, used);
-            memcpy(candidate + used, word, (size_t)(end - word));
-            candidate[used + (size_t)(end - word)] = '\0';
-            length = strlen(candidate);
-            {
-                char measured[UI_TEXT_CAPACITY];
-                memcpy(measured, candidate, length + 1U);
-                while (length > 0U && measured[length - 1U] == ' ') measured[--length] = '\0';
-                if (used > 0U && ui_text_width(font, measured) > width) break;
+            span = (size_t)(end - word);
+            if (used + span >= sizeof line) {
+                if (used == 0U) {
+                    /* A single word longer than a line buffer: keep what fits
+                     * and drop the rest rather than emitting empty lines. */
+                    span = sizeof line - 1U;
+                    memcpy(line, word, span);
+                    line[span] = '\0';
+                    used = span;
+                    while (*end && *end != '\n' && *end != '\r' && *end != ' ') ++end;
+                    while (*end == ' ') ++end;
+                    word = end;
+                }
+                break;
             }
-            memcpy(line, candidate, strlen(candidate) + 1U);
-            used = strlen(line);
+            /* Measure the candidate without its trailing spaces. */
+            trimmed = used + span;
+            while (trimmed > 0U && (trimmed > used ? word[trimmed - used - 1U] : line[trimmed - 1U]) == ' ')
+                --trimmed;
+            if (used > 0U) {
+                char measured[UI_TEXT_CAPACITY];
+                if (trimmed <= used) {
+                    memcpy(measured, line, trimmed);
+                } else {
+                    memcpy(measured, line, used);
+                    memcpy(measured + used, word, trimmed - used);
+                }
+                measured[trimmed] = '\0';
+                if (ui_text_width(font, measured) > width) break;
+            }
+            memcpy(line + used, word, span);
+            used += span;
+            line[used] = '\0';
             word = end;
         }
         while (used > 0U && line[used - 1U] == ' ') line[--used] = '\0';
@@ -202,38 +303,69 @@ static int wrap_text(TTF_Font *font, const char *text, int width,
     return count;
 }
 
+/* Wrapped layouts are reused across frames; dialogs redraw the same text. */
+static const wrap_entry *wrap_cached(TTF_Font *font, const char *text, int width)
+{
+    static wrap_entry scratch;
+    wrap_entry *slot = &wrap_cache[0];
+    size_t length;
+    Uint32 hash = text_hash(text, &length);
+    int index;
+    for (index = 0; index < WRAP_CACHE; ++index) {
+        wrap_entry *entry = &wrap_cache[index];
+        if (entry->font == font && entry->width == width && entry->hash == hash
+            && strcmp(entry->source, text) == 0) {
+            entry->used = ++wrap_clock;
+            return entry;
+        }
+        if (entry->used < slot->used) slot = entry;
+    }
+    if (length >= sizeof slot->source) slot = &scratch;
+    slot->count = wrap_text(font, text, width, slot->lines, WRAP_LINES);
+    slot->widest = 0;
+    for (index = 0; index < slot->count; ++index) {
+        slot->widths[index] = ui_text_width(font, slot->lines[index]);
+        if (slot->widths[index] > slot->widest) slot->widest = slot->widths[index];
+    }
+    if (slot != &scratch) {
+        slot->font = font;
+        slot->width = width;
+        slot->hash = hash;
+        slot->used = ++wrap_clock;
+        memcpy(slot->source, text, length + 1U);
+    }
+    return slot;
+}
+
 int ui_measure_text(TTF_Font *font, const char *text, int width, int *out_width)
 {
-    char lines[24][UI_TEXT_CAPACITY];
-    int count = wrap_text(font, text, width, lines, 24);
-    int index;
-    int widest = 0;
-    for (index = 0; index < count; ++index) {
-        int w = ui_text_width(font, lines[index]);
-        if (w > widest) widest = w;
+    const wrap_entry *wrap;
+    if (!font || !text) {
+        if (out_width) *out_width = 0;
+        return 0;
     }
-    if (out_width) *out_width = widest;
-    return count * ui_line_height(font);
+    wrap = wrap_cached(font, text, width);
+    if (out_width) *out_width = wrap->widest;
+    return wrap->count * ui_line_height(font);
 }
 
 int ui_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
     SDL_Rect rect, ui_align align, SDL_Color color)
 {
-    char lines[24][UI_TEXT_CAPACITY];
-    int count;
+    const wrap_entry *wrap;
     int line_h;
     int index;
-    if (!font) return 0;
-    count = wrap_text(font, text, rect.w, lines, 24);
+    if (!font || !text) return 0;
+    wrap = wrap_cached(font, text, rect.w);
     line_h = ui_line_height(font);
-    for (index = 0; index < count; ++index) {
-        int w = ui_text_width(font, lines[index]);
+    for (index = 0; index < wrap->count; ++index) {
+        int w = wrap->widths[index];
         int x = rect.x;
         if (align == UI_CENTER) x = rect.x + (rect.w - w) / 2;
         else if (align == UI_RIGHT) x = rect.x + rect.w - w;
-        ui_text(renderer, font, lines[index], x, rect.y + index * line_h, color);
+        ui_text(renderer, font, wrap->lines[index], x, rect.y + index * line_h, color);
     }
-    return count * line_h;
+    return wrap->count * line_h;
 }
 
 void ui_draw_fitted(SDL_Renderer *renderer, ui_face face, int italic, int points,

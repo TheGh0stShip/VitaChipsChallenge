@@ -35,6 +35,7 @@ typedef struct piece {
     int link;              /* 0 none, 1 jump, 2 popup */
     int target;
     int underline;
+    int missing;           /* placeholder for an image that failed to load */
 } piece;
 
 typedef struct image {
@@ -66,13 +67,26 @@ static struct {
     int loaded;
 } help;
 
-static struct {
+typedef struct layout_state {
     piece pieces[MAX_PIECES];
     int count;
     int height;
+    int topic;             /* topic and width of the current layout */
+    int width;
+    int valid;
     char pool[32768];
     size_t pool_used;
-} layout;
+} layout_state;
+
+/* Static, not on the stack: a layout is large for Vita thread stacks. The
+ * pool lives inside the struct, so a whole-struct copy keeps text valid. */
+static layout_state layout;
+static layout_state popup_saved;
+
+static int valid_topic(int topic)
+{
+    return topic >= 0 && topic < MAX_TOPICS && help.topic_title[topic] != NULL;
+}
 
 static const SDL_Color black = {0, 0, 0, 255};
 static const SDL_Color white = {255, 255, 255, 255};
@@ -91,6 +105,11 @@ static SDL_Rect text_area(void)
     SDL_Rect r = {window.x + 4, window.y + 4 + CAPTION_H + 1 + BUTTONS_H,
         window.w - 8 - 17, window.h - 8 - CAPTION_H - 1 - BUTTONS_H};
     return r;
+}
+
+static void fill(SDL_Renderer *renderer, SDL_Rect r, SDL_Color c)
+{
+    ui_fill(renderer, r, c);
 }
 
 static int split_fields(char *line, char **fields, int max)
@@ -137,6 +156,11 @@ int help_load(SDL_Renderer *renderer, const char *directory)
         char *fields[8];
         int count;
         if (end) *end = '\0';
+        if (end && end > line && end[-1] == '\r') end[-1] = '\0';
+        if (!*line) {
+            line = end ? end + 1 : NULL;
+            continue;
+        }
         count = split_fields(line, fields, 8);
         switch (fields[0][0]) {
         case 'N':
@@ -153,7 +177,8 @@ int help_load(SDL_Renderer *renderer, const char *directory)
         case 'T':
             if (count >= 3 && help.topic_count < MAX_TOPICS) {
                 int number = atoi(fields[1]);
-                if (number >= 0 && number < MAX_TOPICS) {
+                if (number >= 0 && number < MAX_TOPICS && !help.topic_title[number]
+                    && help.record_count < MAX_RECORDS) {
                     help.topic_start[number] = help.record_count;
                     help.topic_title[number] = fields[2];
                     help.topic_order[help.topic_count++] = number;
@@ -170,7 +195,8 @@ int help_load(SDL_Renderer *renderer, const char *directory)
         default:
             break;
         }
-        if (help.record_count < MAX_RECORDS && strchr("TPQFXLAJUEI", fields[0][0])) {
+        if (help.record_count < MAX_RECORDS && fields[0][0] != '\0' && fields[0][1] == '\0'
+            && strchr("TPQFXLAJUEI", fields[0][0])) {
             record *r = &help.records[help.record_count++];
             int index;
             r->type = fields[0][0];
@@ -190,6 +216,7 @@ int help_load(SDL_Renderer *renderer, const char *directory)
         line = end ? end + 1 : NULL;
     }
     help.loaded = help.topic_count > 0;
+    layout.valid = 0;
     return help.loaded;
 }
 
@@ -200,6 +227,8 @@ void help_free(void)
         if (help.images[index].texture) SDL_DestroyTexture(help.images[index].texture);
     free(help.data);
     memset(&help, 0, sizeof help);
+    layout.count = 0;
+    layout.valid = 0;
 }
 
 static image *find_image(SDL_Renderer *renderer, const char *name)
@@ -217,8 +246,10 @@ static image *find_image(SDL_Renderer *renderer, const char *name)
     surface = SDL_LoadBMP(path);
     if (surface) {
         img->texture = SDL_CreateTextureFromSurface(renderer, surface);
-        img->w = surface->w;
-        img->h = surface->h;
+        if (img->texture) {
+            img->w = surface->w;
+            img->h = surface->h;
+        }
         SDL_FreeSurface(surface);
     }
     return img;
@@ -246,10 +277,33 @@ typedef struct cursor {
     int line_start;   /* first piece on the line */
     int left;
     int first;        /* first-line indent of the paragraph */
+    int width;
+    int align;        /* 'c' centred, 'r' right, otherwise left */
 } cursor;
+
+/* Shift the pieces of the line just completed for centred or right
+ * aligned paragraphs (P record align field). */
+static void finish_line(const cursor *c)
+{
+    int index;
+    int right = c->left;
+    int shift;
+    if (c->align != 'c' && c->align != 'r') return;
+    if (c->line_start < 0 || c->line_start >= layout.count) return;
+    for (index = c->line_start; index < layout.count; ++index) {
+        const SDL_Rect *r = &layout.pieces[index].rect;
+        if (r->x + r->w > right) right = r->x + r->w;
+    }
+    shift = c->width - right;
+    if (c->align == 'c') shift /= 2;
+    if (shift <= 0) return;
+    for (index = c->line_start; index < layout.count; ++index)
+        layout.pieces[index].rect.x += shift;
+}
 
 static void new_line(cursor *c, int minimum)
 {
+    finish_line(c);
     c->y += c->line_h > minimum ? c->line_h : minimum;
     c->line_h = 0;
     c->x = c->left;
@@ -280,17 +334,25 @@ static void lay_out(SDL_Renderer *renderer, int topic, int width)
     int font = 1;
     int link = 0;
     int target = 0;
-    cursor c = {0, 0, 0, 0, 0, 0};
+    cursor c = {0, 0, 0, 0, 0, 0, 0, 'l'};
     int tab = 0;
     int below = 0;
+    if (layout.valid && layout.topic == topic && layout.width == width) return;
+    c.width = width;
     layout.count = 0;
+    layout.height = 0;
     layout.pool_used = 0U;
-    if (topic < 0 || topic >= MAX_TOPICS || !help.topic_title[topic]) return;
+    layout.topic = topic;
+    layout.width = width;
+    layout.valid = 1;
+    if (!valid_topic(topic)) return;
     for (index = help.topic_start[topic] + 1; index < help.record_count; ++index) {
         const record *r = &help.records[index];
         if (r->type == 'T') break;
         switch (r->type) {
         case 'P':
+            if (c.line_start < layout.count) new_line(&c, 0);
+            c.align = r->value[5];
             c.left = px(r->value[0]) + 6;
             c.y += px(r->value[2]);
             c.first = px(r->value[1]);
@@ -325,15 +387,17 @@ static void lay_out(SDL_Renderer *renderer, int topic, int width)
         case 'I': {
             image *img = find_image(renderer, r->text ? r->text : "");
             piece p;
+            int w = img && img->texture ? img->w : 32;
+            int h = img && img->texture ? img->h : 32;
             memset(&p, 0, sizeof p);
-            if (!img || !img->texture) break;
-            if (c.x + img->w > width && c.x > c.left) new_line(&c, 0);
-            p.rect = (SDL_Rect){c.x, c.y, img->w, img->h};
-            p.image = img->texture;
+            if (c.x + w > width && c.x > c.left) new_line(&c, 0);
+            p.rect = (SDL_Rect){c.x, c.y, w, h};
+            p.image = img ? img->texture : NULL;
+            p.missing = p.image == NULL;
             p.link = link;
             p.target = target;
             add_piece(&p, &c);
-            c.x += img->w;
+            c.x += w;
             break;
         }
         case 'X': {
@@ -354,7 +418,9 @@ static void lay_out(SDL_Renderer *renderer, int topic, int width)
                 w = ui_text_width(f, word);
                 if (c.x + w > width && c.x > c.left) {
                     new_line(&c, ui_line_height(f));
-                    while (*text == ' ') { ++text; --length; }
+                    while (*text == ' ') ++text;
+                    length = (size_t)(end - text);
+                    if (length >= sizeof word) length = sizeof word - 1U;
                     memcpy(word, text, length);
                     word[length] = '\0';
                     w = ui_text_width(f, word);
@@ -377,12 +443,31 @@ static void lay_out(SDL_Renderer *renderer, int topic, int width)
             break;
         }
     }
+    finish_line(&c);
     layout.height = c.y + c.line_h + 8;
 }
 
-static void fill(SDL_Renderer *renderer, SDL_Rect r, SDL_Color c)
+/* One past the last piece of the hotspot starting at `start`. */
+static int hotspot_end(int start)
 {
-    ui_fill(renderer, r, c);
+    int index;
+    if (start < 0 || start >= layout.count || !layout.pieces[start].link) return start;
+    for (index = start + 1; index < layout.count; ++index)
+        if (layout.pieces[index].link != layout.pieces[start].link
+            || layout.pieces[index].target != layout.pieces[start].target)
+            break;
+    return index;
+}
+
+static void draw_piece(SDL_Renderer *renderer, const piece *p, SDL_Rect at)
+{
+    if (p->image) (void)SDL_RenderCopy(renderer, p->image, NULL, &at);
+    else if (p->missing) {
+        fill(renderer, (SDL_Rect){at.x, at.y, at.w, 1}, gray);
+        fill(renderer, (SDL_Rect){at.x, at.y + at.h - 1, at.w, 1}, gray);
+        fill(renderer, (SDL_Rect){at.x, at.y, 1, at.h}, gray);
+        fill(renderer, (SDL_Rect){at.x + at.w - 1, at.y, 1, at.h}, gray);
+    } else if (p->font && p->text) ui_text(renderer, p->font, p->text, at.x, at.y, p->color);
 }
 
 static const char *const button_labels[5] = {"&Contents", "&Search", "&Back", "<<", ">>"};
@@ -400,6 +485,7 @@ static void draw_window(SDL_Renderer *renderer, int topic, int scroll, int focus
     SDL_Rect area = text_area();
     SDL_Rect r;
     int index;
+    int focus_end = hotspot_end(focus);
     char title[96];
     /* Sizable frame and caption. */
     fill(renderer, window, black);
@@ -444,23 +530,33 @@ static void draw_window(SDL_Renderer *renderer, int topic, int scroll, int focus
         const piece *p = &layout.pieces[index];
         SDL_Rect at = {area.x + p->rect.x, area.y + p->rect.y - scroll, p->rect.w, p->rect.h};
         if (at.y + at.h < area.y || at.y > area.y + area.h) continue;
-        if (p->image) (void)SDL_RenderCopy(renderer, p->image, NULL, &at);
-        else ui_text(renderer, p->font, p->text, at.x, at.y, p->color);
+        draw_piece(renderer, p, at);
         if (p->underline == 1) fill(renderer, (SDL_Rect){at.x, at.y + at.h - 2, at.w, 1}, green);
         if (p->underline == 2) {
             int x;
             for (x = 0; x < at.w; x += 2) fill(renderer, (SDL_Rect){at.x + x, at.y + at.h - 2, 1, 1}, green);
         }
-        if (p->link && focus >= 0 && layout.pieces[focus].target == p->target
-            && index >= focus && (index == focus || layout.pieces[index - 1].link))
-            fill(renderer, (SDL_Rect){at.x, at.y, at.w, 1}, black);
+        if (focus >= 0 && index >= focus && index < focus_end) {
+            /* Dotted focus frame around each piece of the focused hotspot. */
+            int x;
+            int y;
+            for (x = 0; x < at.w; x += 2) {
+                fill(renderer, (SDL_Rect){at.x + x, at.y, 1, 1}, black);
+                fill(renderer, (SDL_Rect){at.x + x, at.y + at.h - 1, 1, 1}, black);
+            }
+            if (index == focus)
+                for (y = 0; y < at.h; y += 2) fill(renderer, (SDL_Rect){at.x, at.y + y, 1, 1}, black);
+            if (index + 1 == focus_end)
+                for (y = 0; y < at.h; y += 2)
+                    fill(renderer, (SDL_Rect){at.x + at.w - 1, at.y + y, 1, 1}, black);
+        }
     }
     (void)SDL_RenderSetClipRect(renderer, NULL);
     {
         SDL_Rect bar = {area.x + area.w, area.y, 17, area.h};
         fill(renderer, bar, light);
         fill(renderer, (SDL_Rect){bar.x, bar.y, 1, bar.h}, black);
-        if (layout.height > area.h) {
+        if (layout.height > area.h && scroll >= 0 && scroll <= layout.height - area.h) {
             int thumb = bar.y + (bar.h - 17) * scroll / (layout.height - area.h);
             fill(renderer, (SDL_Rect){bar.x + 1, thumb, 16, 17}, white);
             fill(renderer, (SDL_Rect){bar.x + 1, thumb + 16, 16, 1}, black);
@@ -473,7 +569,9 @@ static int keyword_topic(const char *word)
 {
     int index;
     for (index = 0; index < help.keyword_count; ++index)
-        if (SDL_strcasecmp(help.keywords[index].word, word) == 0) return help.keywords[index].topic;
+        if (word && SDL_strcasecmp(help.keywords[index].word, word) == 0
+            && valid_topic(help.keywords[index].topic))
+            return help.keywords[index].topic;
     return help.topic_count > 0 ? help.topic_order[0] : 0;
 }
 
@@ -486,7 +584,7 @@ static int next_link(int from, int step)
         if (index < 0) index = layout.count - 1;
         if (index >= layout.count) index = 0;
         if (layout.pieces[index].link
-            && (index == 0 || !layout.pieces[index - 1].link
+            && (index == 0 || layout.pieces[index - 1].link != layout.pieces[index].link
                 || layout.pieces[index - 1].target != layout.pieces[index].target))
             return index;
     }
@@ -496,16 +594,22 @@ static int next_link(int from, int step)
 /* A popup topic in a bordered box, closed by any key or click. */
 static void show_popup(SDL_Renderer *renderer, int topic, help_backdrop backdrop, void *context)
 {
-    piece saved[MAX_PIECES];
-    int saved_count = layout.count;
-    int saved_height = layout.height;
     int done = 0;
-    memcpy(saved, layout.pieces, sizeof(piece) * (size_t)layout.count);
+    if (!valid_topic(topic)) return;
+    popup_saved = layout;
+    layout.valid = 0;
     lay_out(renderer, topic, 360);
     while (!done) {
         SDL_Event event;
         SDL_Rect box = {(UI_SCREEN_W - 380) / 2, 120, 380, layout.height + 12};
+        SDL_Rect clip;
         int index;
+        if (box.y + box.h > UI_SCREEN_H - 4) box.y = UI_SCREEN_H - 4 - box.h;
+        if (box.y < 4) {
+            box.y = 4;
+            box.h = UI_SCREEN_H - 8;
+        }
+        clip = (SDL_Rect){box.x + 1, box.y + 1, box.w - 2, box.h - 2};
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_KEYDOWN || event.type == SDL_CONTROLLERBUTTONDOWN
                 || event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_QUIT)
@@ -514,19 +618,19 @@ static void show_popup(SDL_Renderer *renderer, int topic, help_backdrop backdrop
         backdrop(context);
         fill(renderer, (SDL_Rect){box.x + 3, box.y + 3, box.w, box.h}, black);
         fill(renderer, box, black);
-        fill(renderer, (SDL_Rect){box.x + 1, box.y + 1, box.w - 2, box.h - 2}, white);
+        fill(renderer, clip, white);
+        (void)SDL_RenderSetClipRect(renderer, &clip);
         for (index = 0; index < layout.count; ++index) {
             const piece *p = &layout.pieces[index];
             SDL_Rect at = {box.x + 4 + p->rect.x, box.y + 4 + p->rect.y, p->rect.w, p->rect.h};
-            if (p->image) (void)SDL_RenderCopy(renderer, p->image, NULL, &at);
-            else ui_text(renderer, p->font, p->text, at.x, at.y, p->color);
+            if (at.y > clip.y + clip.h) break;
+            draw_piece(renderer, p, at);
         }
+        (void)SDL_RenderSetClipRect(renderer, NULL);
         SDL_RenderPresent(renderer);
         SDL_Delay(8);
     }
-    memcpy(layout.pieces, saved, sizeof(piece) * (size_t)saved_count);
-    layout.count = saved_count;
-    layout.height = saved_height;
+    layout = popup_saved;
 }
 
 /* Search: the keyword list; choosing one shows its first topic. */
@@ -600,7 +704,13 @@ typedef struct view {
 
 static void go(view *v, int topic, int remember)
 {
-    if (remember && v->depth < HISTORY) v->history[v->depth++] = v->topic;
+    if (!valid_topic(topic)) return;
+    if (remember && topic == v->topic) return;
+    if (remember && v->depth >= HISTORY) {
+        memmove(v->history, v->history + 1, sizeof v->history[0] * (HISTORY - 1));
+        --v->depth;
+    }
+    if (remember && valid_topic(v->topic) && v->depth < HISTORY) v->history[v->depth++] = v->topic;
     v->topic = topic;
     v->scroll = 0;
     lay_out(v->renderer, topic, text_area().w - 12);
@@ -628,7 +738,8 @@ static void press_button(view *v, int index)
     }
     case 2: if (v->depth > 0) go(v, v->history[--v->depth], 0); break;
     case 3: if (position > 0) go(v, help.topic_order[position - 1], 1); break;
-    case 4: if (position + 1 < help.topic_count && help.topic_title[help.topic_order[position + 1]][0])
+    case 4: if (position + 1 < help.topic_count && valid_topic(help.topic_order[position + 1])
+                && help.topic_title[help.topic_order[position + 1]][0])
                 go(v, help.topic_order[position + 1], 1);
         break;
     default: break;
@@ -639,6 +750,8 @@ void help_run(SDL_Renderer *renderer, const char *keyword, help_backdrop backdro
 {
     view v;
     int open = 1;
+    int shown_focus = -2;
+    int shown_topic = -2;
     SDL_Rect area = text_area();
     if (!help.loaded) return;
     memset(&v, 0, sizeof v);
@@ -649,7 +762,7 @@ void help_run(SDL_Renderer *renderer, const char *keyword, help_backdrop backdro
     go(&v, keyword_topic(keyword), 0);
     while (open) {
         SDL_Event event;
-        int limit = layout.height > area.h ? layout.height - area.h : 0;
+        int limit;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) open = 0;
             if (event.type == SDL_KEYDOWN) {
@@ -694,18 +807,22 @@ void help_run(SDL_Renderer *renderer, const char *keyword, help_backdrop backdro
                 int x = event.button.x;
                 int y = event.button.y;
                 int index;
-                for (index = 0; index < 5; ++index) {
+                int handled = 0;
+                for (index = 0; index < 5 && !handled; ++index) {
                     SDL_Rect b = button_rect(index);
-                    if (x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h) press_button(&v, index);
+                    if (x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h) {
+                        press_button(&v, index);
+                        handled = 1;
+                    }
                 }
-                for (index = 0; index < layout.count; ++index) {
+                for (index = 0; !handled && index < layout.count; ++index) {
                     const piece *p = &layout.pieces[index];
                     int px0 = area.x + p->rect.x;
                     int py0 = area.y + p->rect.y - v.scroll;
                     if (p->link && x >= px0 && y >= py0 && x < px0 + p->rect.w && y < py0 + p->rect.h
                         && y >= area.y && y < area.y + area.h) {
                         activate(&v, index);
-                        break;
+                        handled = 1;
                     }
                 }
                 if (y < window.y || y > window.y + window.h) open = 0;
@@ -715,12 +832,17 @@ void help_run(SDL_Renderer *renderer, const char *keyword, help_backdrop backdro
         limit = layout.height > area.h ? layout.height - area.h : 0;
         if (v.scroll > limit) v.scroll = limit;
         if (v.scroll < 0) v.scroll = 0;
-        if (v.focus >= 0 && v.focus < layout.count) {
-            /* Keep the focused hotspot visible. */
+        if (v.focus >= layout.count) v.focus = -1;
+        if (v.focus >= 0 && v.focus != shown_focus && v.topic == shown_topic) {
+            /* Bring a newly focused hotspot into view; free scrolling after. */
             const piece *p = &layout.pieces[v.focus];
             if (p->rect.y < v.scroll) v.scroll = p->rect.y;
             if (p->rect.y + p->rect.h > v.scroll + area.h) v.scroll = p->rect.y + p->rect.h - area.h;
+            if (v.scroll > limit) v.scroll = limit;
+            if (v.scroll < 0) v.scroll = 0;
         }
+        shown_focus = v.focus;
+        shown_topic = v.topic;
         backdrop(context);
         draw_window(renderer, v.topic, v.scroll, v.focus, v.depth > 0);
         SDL_RenderPresent(renderer);

@@ -4,11 +4,11 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import pathlib
 import struct
-import sys
 
 
 def u16(data: bytes, offset: int) -> int:
@@ -81,12 +81,15 @@ def entry_table(data: bytes, offset: int, size: int) -> list[dict[str, object]]:
     return entries
 
 
-def main() -> int:
-    if len(sys.argv) != 3:
-        print(f"usage: {sys.argv[0]} INPUT.EXE OUTPUT.json", file=sys.stderr)
-        return 2
-    source = pathlib.Path(sys.argv[1])
-    destination = pathlib.Path(sys.argv[2])
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("input", type=pathlib.Path, help="NE executable or DLL")
+    parser.add_argument("output", type=pathlib.Path, help="JSON inventory to write")
+    args = parser.parse_args(argv)
+    source: pathlib.Path = args.input
+    destination: pathlib.Path = args.output
+    if not source.is_file():
+        parser.error(f"input not found: {source}")
     data = source.read_bytes()
     if data[:2] != b"MZ":
         raise SystemExit("missing MZ header")

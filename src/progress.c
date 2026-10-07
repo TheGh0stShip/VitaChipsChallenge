@@ -2,7 +2,6 @@
 #include "vcc/progress.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define SECTION "Chip's Challenge"
@@ -40,86 +39,206 @@ static int key_equals(const char *key, size_t length, const char *name)
     return 1;
 }
 
-/* Mirrors 2:1ADC: the password ends at the first comma, then seconds and
- * score follow. A missing or negative field reads as no record. */
-static void parse_level(vcc_level_progress *level, const char *value)
+static int is_space(char c)
 {
-    const char *comma = strchr(value, ',');
-    size_t length = comma ? (size_t)(comma - value) : strlen(value);
+    return c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f';
+}
+
+/* Parses an optionally signed decimal integer occupying the whole field
+ * (surrounding blanks allowed). Overflow saturates. Returns 0 on garbage. */
+static int parse_long(const char *text, size_t length, long *out)
+{
+    size_t index = 0U;
+    int negative = 0;
+    int digits = 0;
+    long value = 0;
+    while (index < length && is_space(text[index]))
+        ++index;
+    if (index < length && (text[index] == '-' || text[index] == '+'))
+        negative = text[index++] == '-';
+    while (index < length && text[index] >= '0' && text[index] <= '9') {
+        long digit = (long)(text[index++] - '0');
+        digits = 1;
+        if (value > (2147483647L - digit) / 10L)
+            value = 2147483647L;
+        else
+            value = value * 10L + digit;
+    }
+    while (index < length && is_space(text[index]))
+        ++index;
+    if (!digits || index != length)
+        return 0;
+    *out = negative ? -value : value;
+    return 1;
+}
+
+static long clamp_long(long value, long low, long high)
+{
+    return value < low ? low : value > high ? high : value;
+}
+
+static int password_char(char c)
+{
+    return c > ' ' && c < 0x7F && c != ',';
+}
+
+/* Mirrors 2:1ADC: the password ends at the first comma, then seconds and
+ * score follow. A missing, malformed or negative field reads as no record. */
+static void parse_level(vcc_level_progress *level, const char *value, size_t size)
+{
+    const char *comma = memchr(value, ',', size);
+    const char *second;
+    size_t length = comma ? (size_t)(comma - value) : size;
+    size_t index;
+    size_t kept = 0U;
     long seconds;
     long score;
-    if (length >= VCC_PASSWORD_CAPACITY)
-        length = VCC_PASSWORD_CAPACITY - 1U;
-    memcpy(level->password, value, length);
-    level->password[length] = '\0';
-    level->record.present = false;
+    memset(level, 0, sizeof *level);
+    for (index = 0U; index < length && kept + 1U < VCC_PASSWORD_CAPACITY; ++index)
+        if (password_char(value[index]))
+            level->password[kept++] = value[index];
+    level->password[kept] = '\0';
     if (!comma)
         return;
-    seconds = strtol(comma + 1, NULL, 10);
-    comma = strchr(comma + 1, ',');
-    if (!comma)
+    second = memchr(comma + 1, ',', (size_t)(value + size - comma - 1));
+    if (!second)
         return;
-    score = strtol(comma + 1, NULL, 10);
-    if (seconds < 0 || score < 0)
+    if (!parse_long(comma + 1, (size_t)(second - comma - 1), &seconds)
+        || !parse_long(second + 1, (size_t)(value + size - second - 1), &score))
+        return;
+    if (seconds < 0 || score < 0 || seconds > 32767L)
         return;
     level->record.present = true;
     level->record.seconds = (int16_t)seconds;
     level->record.score = (int32_t)score;
 }
 
+enum {
+    SEEN_HIGHEST = 1 << 0,
+    SEEN_CURRENT = 1 << 1,
+    SEEN_SCORE = 1 << 2,
+    SEEN_MIDI = 1 << 3,
+    SEEN_SOUNDS = 1 << 4,
+    SEEN_COLOR = 1 << 5,
+    SEEN_MIDI_FILES = 1 << 6
+};
+
+/* Claims a key once: like GetPrivateProfileString, the first occurrence
+ * of a duplicated key wins. */
+static int claim(unsigned *seen, unsigned bit)
+{
+    if (*seen & bit)
+        return 0;
+    *seen |= bit;
+    return 1;
+}
+
+static int16_t parse_option(const char *value, size_t length, int16_t fallback)
+{
+    long number;
+    if (!parse_long(value, length, &number))
+        return fallback;
+    return (int16_t)clamp_long(number, -32768L, 32767L);
+}
+
 void vcc_progress_parse(vcc_progress *progress, const char *text, size_t size)
 {
-    const char *end = text + size;
+    const char *end;
     int in_section = 0;
+    unsigned seen = 0U;
+    unsigned char level_seen[VCC_MAX_LEVELS + 1U];
     vcc_progress_reset(progress);
+    if (!text)
+        return;
+    end = text + size;
+    memset(level_seen, 0, sizeof level_seen);
     while (text < end) {
         const char *line_end = memchr(text, '\n', (size_t)(end - text));
+        const char *next;
         const char *equals;
-        char value[64];
+        const char *key;
+        const char *key_end;
+        const char *value;
+        const char *value_end;
+        size_t key_length;
         size_t value_length;
+        long number;
         if (!line_end)
             line_end = end;
-        if (*text == '[') {
+        next = line_end < end ? line_end + 1 : end;
+        while (text < line_end && is_space(*text))
+            ++text;
+        while (line_end > text && is_space(line_end[-1]))
+            --line_end;
+        if (text < line_end && *text == '[') {
             const char *close = memchr(text, ']', (size_t)(line_end - text));
-            in_section = close && key_equals(text + 1, (size_t)(close - text - 1), SECTION);
-        } else if (in_section
-            && (equals = memchr(text, '=', (size_t)(line_end - text))) != NULL) {
-            size_t key_length = (size_t)(equals - text);
-            value_length = (size_t)(line_end - equals - 1);
-            while (value_length > 0U && (equals[value_length] == '\r'))
-                --value_length;
-            if (value_length >= sizeof value)
-                value_length = sizeof value - 1U;
-            memcpy(value, equals + 1, value_length);
-            value[value_length] = '\0';
-            if (key_equals(text, key_length, "Highest Level")) {
-                progress->highest_level = (uint16_t)strtoul(value, NULL, 10);
-            } else if (key_equals(text, key_length, "Current Level")) {
-                progress->current_level = (uint16_t)strtoul(value, NULL, 10);
-            } else if (key_equals(text, key_length, "Current Score")) {
-                progress->current_score = (int32_t)strtol(value, NULL, 10);
-            } else if (key_equals(text, key_length, "MIDI")) {
-                progress->music = (int16_t)strtol(value, NULL, 10);
-            } else if (key_equals(text, key_length, "Sounds")) {
-                progress->sounds = (int16_t)strtol(value, NULL, 10);
-            } else if (key_equals(text, key_length, "Color")) {
-                progress->color = (int16_t)strtol(value, NULL, 10);
-            } else if (key_equals(text, key_length, "Number of Midi Files")) {
-                progress->midi_files = (int16_t)strtol(value, NULL, 10);
-            } else if (key_length > 5U && key_equals(text, 5U, "Level")) {
-                char number[8];
-                unsigned long level;
-                size_t digits = key_length - 5U;
-                if (digits < sizeof number) {
-                    memcpy(number, text + 5, digits);
-                    number[digits] = '\0';
-                    level = strtoul(number, NULL, 10);
-                    if (level >= 1U && level <= VCC_MAX_LEVELS)
-                        parse_level(&progress->levels[level], value);
-                }
+            const char *name = text + 1;
+            const char *name_end = close;
+            if (close) {
+                while (name < name_end && is_space(*name)) ++name;
+                while (name_end > name && is_space(name_end[-1])) --name_end;
+            }
+            in_section = close
+                && key_equals(name, (size_t)(name_end - name), SECTION);
+            text = next;
+            continue;
+        }
+        if (!in_section || text >= line_end || *text == ';'
+            || (equals = memchr(text, '=', (size_t)(line_end - text))) == NULL) {
+            text = next;
+            continue;
+        }
+        key = text;
+        key_end = equals;
+        while (key_end > key && is_space(key_end[-1]))
+            --key_end;
+        key_length = (size_t)(key_end - key);
+        value = equals + 1;
+        value_end = line_end;
+        while (value < value_end && is_space(*value))
+            ++value;
+        value_length = (size_t)(value_end - value);
+
+        if (key_equals(key, key_length, "Highest Level")) {
+            if (claim(&seen, SEEN_HIGHEST) && parse_long(value, value_length, &number))
+                progress->highest_level =
+                    (uint16_t)clamp_long(number, 1L, (long)VCC_MAX_LEVELS);
+        } else if (key_equals(key, key_length, "Current Level")) {
+            if (claim(&seen, SEEN_CURRENT) && parse_long(value, value_length, &number))
+                progress->current_level =
+                    (uint16_t)clamp_long(number, 1L, (long)VCC_MAX_LEVELS);
+        } else if (key_equals(key, key_length, "Current Score")) {
+            if (claim(&seen, SEEN_SCORE) && parse_long(value, value_length, &number))
+                progress->current_score = (int32_t)clamp_long(number, 0L, 2147483647L);
+        } else if (key_equals(key, key_length, "MIDI")) {
+            if (claim(&seen, SEEN_MIDI))
+                progress->music = parse_option(value, value_length, progress->music);
+        } else if (key_equals(key, key_length, "Sounds")) {
+            if (claim(&seen, SEEN_SOUNDS))
+                progress->sounds = parse_option(value, value_length, progress->sounds);
+        } else if (key_equals(key, key_length, "Color")) {
+            if (claim(&seen, SEEN_COLOR))
+                progress->color = parse_option(value, value_length, progress->color);
+        } else if (key_equals(key, key_length, "Number of Midi Files")) {
+            if (claim(&seen, SEEN_MIDI_FILES))
+                progress->midi_files =
+                    parse_option(value, value_length, progress->midi_files);
+        } else if (key_length > 5U && key_equals(key, 5U, "Level")) {
+            size_t index;
+            unsigned long level = 0UL;
+            int valid = key_length - 5U <= 3U;
+            for (index = 5U; valid && index < key_length; ++index) {
+                if (key[index] < '0' || key[index] > '9')
+                    valid = 0;
+                else
+                    level = level * 10UL + (unsigned long)(key[index] - '0');
+            }
+            if (valid && level >= 1UL && level <= VCC_MAX_LEVELS && !level_seen[level]) {
+                level_seen[level] = 1U;
+                parse_level(&progress->levels[level], value, value_length);
             }
         }
-        text = line_end + 1;
+        text = next;
     }
 }
 
@@ -127,9 +246,14 @@ size_t vcc_progress_format(const vcc_progress *progress, char *out, size_t capac
 {
     size_t used = 0U;
     unsigned level;
+    if (!out)
+        capacity = 0U;
+    if (capacity > 0U)
+        out[0] = '\0';
 #define EMIT(...) do { \
-    int n = snprintf(out ? out + used : NULL, \
-        out && used < capacity ? capacity - used : 0U, __VA_ARGS__); \
+    int n = used < capacity \
+        ? snprintf(out + used, capacity - used, __VA_ARGS__) \
+        : snprintf(NULL, 0U, __VA_ARGS__); \
     if (n > 0) used += (size_t)n; \
 } while (0)
     EMIT("[" SECTION "]\r\n");
@@ -142,11 +266,20 @@ size_t vcc_progress_format(const vcc_progress *progress, char *out, size_t capac
     EMIT("Number of Midi Files=%d\r\n", (int)progress->midi_files);
     for (level = 1U; level <= VCC_MAX_LEVELS; ++level) {
         const vcc_level_progress *entry = &progress->levels[level];
+        char password[VCC_PASSWORD_CAPACITY];
+        size_t index;
+        size_t kept = 0U;
+        for (index = 0U; index + 1U < VCC_PASSWORD_CAPACITY
+             && entry->password[index] != '\0'; ++index)
+            if (password_char(entry->password[index]))
+                password[kept++] = entry->password[index];
+        password[kept] = '\0';
         if (entry->record.present)
-            EMIT("Level%u=%s,%d,%ld\r\n", level, entry->password,
-                (int)entry->record.seconds, (long)entry->record.score);
-        else if (entry->password[0] != '\0')
-            EMIT("Level%u=%s\r\n", level, entry->password);
+            EMIT("Level%u=%s,%d,%ld\r\n", level, password,
+                entry->record.seconds < 0 ? 0 : (int)entry->record.seconds,
+                entry->record.score < 0 ? 0L : (long)entry->record.score);
+        else if (password[0] != '\0')
+            EMIT("Level%u=%s\r\n", level, password);
     }
 #undef EMIT
     return used;

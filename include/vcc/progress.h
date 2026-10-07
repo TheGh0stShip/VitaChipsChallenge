@@ -32,9 +32,15 @@ void vcc_progress_reset(vcc_progress *progress);
 /* New Game (2:1DAE): forgets every level record and password and the
  * score, keeping the options. */
 void vcc_progress_new_game(vcc_progress *progress);
-/* Parses INI text; unknown sections and keys are ignored. */
+/* Parses INI text; unknown sections and keys are ignored. Accepts LF or
+ * CRLF, a missing final newline, blanks around '=' and section names, and
+ * lines of any length. The first occurrence of a duplicated key wins.
+ * Levels clamp to 1..VCC_MAX_LEVELS, the score to 0..INT32_MAX; malformed
+ * values keep the defaults. text may be NULL when size is 0. */
 void vcc_progress_parse(vcc_progress *progress, const char *text, size_t size);
-/* Writes INI text. Returns the length needed, excluding the terminator. */
+/* Writes INI text (CRLF lines). Always NUL-terminates when capacity > 0;
+ * out may be NULL to measure. Returns the length needed, excluding the
+ * terminator; output was truncated if the result >= capacity. */
 size_t vcc_progress_format(const vcc_progress *progress, char *out, size_t capacity);
 
 #endif

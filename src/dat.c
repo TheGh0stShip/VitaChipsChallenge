@@ -101,7 +101,7 @@ static vcc_dat_result parse_traps(vcc_level *level,
         level->traps[index].button_y = read_u16_at(entry + 2U);
         level->traps[index].trap_x = read_u16_at(entry + 4U);
         level->traps[index].trap_y = read_u16_at(entry + 6U);
-        level->traps[index].initially_open = read_u16_at(entry + 8U);
+        level->traps[index].closed = read_u16_at(entry + 8U);
     }
     return VCC_DAT_OK;
 }
@@ -165,6 +165,9 @@ static vcc_dat_result parse_metadata(cursor *record, vcc_level *level)
         else if (type == 6U)
             result = copy_text(level->password, sizeof level->password,
                                record->bytes + record->offset, length, 1);
+        else if (type == 8U) /* plain-text password, not XORed (4:0D58) */
+            result = copy_text(level->password, sizeof level->password,
+                               record->bytes + record->offset, length, 0);
         else if (type == 7U)
             result = copy_text(level->hint, sizeof level->hint,
                                record->bytes + record->offset, length, 0);

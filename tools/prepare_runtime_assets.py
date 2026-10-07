@@ -8,7 +8,7 @@ import argparse
 import struct
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 
 TRANSPARENT_KEY = (1, 2, 3)
@@ -36,20 +36,14 @@ def main() -> None:
     # (the sprite on white) and the opaque area from tile+0x60 (white mask).
     source = Image.open(args.assets / "OBJ32_4.bmp").convert("RGB")
     masked = Image.new("RGB", source.size, TRANSPARENT_KEY)
-    source_pixels = source.load()
-    masked_pixels = masked.load()
 
-    def origin(tile: int) -> tuple[int, int]:
-        return (tile // 16) * 32, (tile % 16) * 32
+    def box(tile: int) -> tuple[int, int, int, int]:
+        x, y = (tile // 16) * 32, (tile % 16) * 32
+        return x, y, x + 32, y + 32
 
     for tile in range(0x40, 0x70):
-        tx, ty = origin(tile)
-        cx, cy = origin(tile + 0x30)
-        mx, my = origin(tile + 0x60)
-        for y in range(32):
-            for x in range(32):
-                if source_pixels[mx + x, my + y] != (0, 0, 0):
-                    masked_pixels[tx + x, ty + y] = source_pixels[cx + x, cy + y]
+        sprite = source.crop(box(tile + 0x30))
+        masked.paste(sprite, box(tile), opaque_mask(source.crop(box(tile + 0x60))))
     masked.save(args.assets / "OBJ32_MASKED.bmp")
 
     # The application icon for the About dialog, transparent where the AND
@@ -64,31 +58,39 @@ def main() -> None:
         vita_bmp(Image.open(banner)).save(args.assets / "WEP_666_RGB.bmp")
 
 
+def opaque_mask(image: Image.Image) -> Image.Image:
+    """Return an L mask that is 255 wherever an RGB pixel is not black."""
+    r, g, b = image.split()
+    return ImageChops.lighter(ImageChops.lighter(r, g), b).point(lambda v: 255 if v else 0)
+
+
+ICON_RAW_MODES = {1: "P;1", 4: "P;4", 8: "P"}
+
+
 def icon_rgb(dib: bytes) -> Image.Image:
+    """Decode a bottom-up RT_ICON DIB (colour image plus AND mask)."""
     header_size, width, height, _, depth = struct.unpack_from("<IiiHH", dib)
+    if depth not in ICON_RAW_MODES:
+        raise ValueError(f"unsupported icon depth {depth}")
     height //= 2
     colors = 1 << depth
-    palette = [dib[header_size + 4 * i: header_size + 4 * i + 3] for i in range(colors)]
+    palette = bytearray()
+    for i in range(colors):
+        b, g, r = dib[header_size + 4 * i: header_size + 4 * i + 3]
+        palette += bytes((r, g, b))
     xor_offset = header_size + 4 * colors
     xor_stride = ((width * depth + 31) // 32) * 4
     and_offset = xor_offset + xor_stride * height
     and_stride = ((width + 31) // 32) * 4
-    image = Image.new("RGB", (width, height))
-    pixels = image.load()
-    for y in range(height):
-        row = height - 1 - y
-        for x in range(width):
-            bit = (dib[and_offset + row * and_stride + x // 8] >> (7 - x % 8)) & 1
-            if bit:
-                pixels[x, y] = TRANSPARENT_KEY
-                continue
-            value = dib[xor_offset + row * xor_stride + x * depth // 8]
-            if depth == 4:
-                value = (value >> 4) if x % 2 == 0 else (value & 15)
-            b, g, r = palette[value]
-            pixels[x, y] = (r, g, b)
+    size = (width, height)
+    image = Image.frombytes("P", size, dib[xor_offset:and_offset], "raw",
+                            ICON_RAW_MODES[depth], xor_stride, -1)
+    image.putpalette(palette)
+    image = image.convert("RGB")
+    mask = Image.frombytes("1", size, dib[and_offset:and_offset + and_stride * height],
+                           "raw", "1", and_stride, -1)
+    image.paste(TRANSPARENT_KEY, (0, 0, width, height), mask)
     return image
-
 
 if __name__ == "__main__":
     main()

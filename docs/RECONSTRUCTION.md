@@ -7,7 +7,7 @@ SHA-256 `8e26acd67cf120bd5b512de4b4e78b80aca1579413cd04f3b2b68909a375866c`.
 The executable is 267,776 bytes, expects Windows 3.0, and was linked by NE
 linker version 5.30.
 
-Generated inventories are checked in as
+The NE inventories are checked in as
 [`reference-inventory.json`](reference-inventory.json) and
 [`wep4util-inventory.json`](wep4util-inventory.json). They contain offsets and
 metadata, not original executable bytes.
@@ -55,18 +55,7 @@ teleports mirror the originals at `state+0x91E` through `state+0x956`.
 The original ran its death message, Level Complete dialog, and level
 reload from inside the timer tick, so the rest of that tick then ran on
 the reloaded level. The port keeps this order. The engine calls hooks that
-run modal dialogs to completion and reload before returning.
-
-## Previous gameplay slice
-
-`src/game.c` is an independent fixed-width C implementation. The current slice
-reconstructs map layering, player direction and collision, thin walls, movable
-blocks, water-to-dirt conversion, chips, sockets, keys, doors, boots, thief,
-fire, water, bombs, fake blue walls, toggle buttons, exits, and the 20 Hz level
-timer. The working implementation also includes initial monster movement,
-traps, clone links, teleports, ice, force floors, and event-driven WAV effects.
-Those systems remain partial because their Win16 movement phases and edge cases
-are not yet covered by reference traces. The detailed gate is in
+run modal dialogs to completion and reload before returning. Per-system status is in
 [`COMPATIBILITY.md`](COMPATIBILITY.md).
 
 ## Level completion scoring
@@ -102,10 +91,10 @@ by its references to the `Time Bonus:  %d` format at `DS:0B83`.
 - Clock (`7:05BD`): one second elapses per 10 engine ticks. The Tick sound
   plays at 15 seconds or less; at zero ChipDeathByTime plays and death reason
   6 applies.
-- Counters (`2:0CBE`, `2:29A6`, `9:00EA`): see `COMPATIBILITY.md`.
+- Counters (`2:0CBE`, `2:29A6`, `9:00EA`): see [`COMPATIBILITY.md`](COMPATIBILITY.md).
 - Sounds (`8:056C`): `sndPlaySound(name, SND_ASYNC | SND_NODEFAULT)`, so a
   new sound replaces the current one. Sound indices and default files are
-  listed in `include/vcc/game.h`.
+  listed in [`include/vcc/game.h`](../include/vcc/game.h).
 - Dialogs call WEP4UTIL `GRAYDLGPROC` and `CENTERHWND` (ordinals 1202 and
   103), so they have gray clients and are centered on the main window.
 - `tools/ne_disasm.py` produces listings with relocations resolved. Its
@@ -122,13 +111,12 @@ state are recorded in [`COMPATIBILITY.md`](COMPATIBILITY.md).
 
 `tools/extract_ne_resources.py` reads bitmap offsets from the checked-in NE
 inventory and wraps each Windows DIB in a standard BMP header. The port uses
-the 416 by 512 `OBJ32_4` sheet directly. `tools/build_vita_assets.py` derives
+the 416 by 512 `OBJ32_4` sheet directly, compositing each sprite through its
+mask column as the original does (`2:00C4`). `tools/build_vita_assets.py` derives
 the icon, splash, LiveArea background, and system background from `OBJ32_4`,
-`BACKGROUND`, and `CHIPEND`; it introduces no generated or clone artwork.
+`BACKGROUND`, and `CHIPEND`; it adds no new or clone artwork.
 
 ## Provenance boundary
 
-The former Tile World adaptation is stored outside this repository at
-`VitaChipsChallenge-tworld-reference`. No source from it is copied here. The
-original game archive is ignored under `reference/` and is required only for
+No Tile World, emulator, or clone source is used. The original game archive is ignored under `reference/` and is required only for
 local analysis and personal builds.

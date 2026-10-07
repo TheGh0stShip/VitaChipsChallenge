@@ -7,10 +7,13 @@
  * first falls below 500 (6:0441-6:0495). The sub-500 value is kept. */
 static int32_t level_bonus(uint16_t level, int16_t attempts)
 {
-    int32_t bonus = (int32_t)level * 500;
+    /* 6:0441: imul word -- signed 16x16->32 multiply of the level. */
+    int32_t bonus = (int32_t)(int16_t)level * 500;
     int16_t i;
     for (i = 0; i < attempts; ++i) {
-        bonus = (bonus * 4) / 5;
+        /* 6:0470: shl/rcl wraps in 32 bits; 1:0110 is signed long
+         * division (truncates toward zero). 6:0485: signed compare. */
+        bonus = (int32_t)((uint32_t)bonus * 4U) / 5;
         if (bonus < 500) {
             break;
         }
@@ -38,13 +41,15 @@ void vcc_score_completion(vcc_completion *out, uint16_t level,
     const vcc_level_record *prev = NULL;
 
     out->title = title_for(attempts);
-    out->time_bonus = (int16_t)(time_left * 10);
+    /* 6:042B: time*10 in a 16-bit register, then cwd at 6:043A. */
+    out->time_bonus = (int16_t)(uint16_t)((uint16_t)time_left * 10U);
     out->level_bonus = level_bonus(level, attempts);
     out->level_score = out->time_bonus + out->level_bonus;
 
     /* 6:0586: stored records are consulted only up to the highest level,
      * and a negative stored time or score counts as no record. */
-    if (level <= highest_level && previous != NULL && previous->present
+    /* 6:058A cmp/jng: signed 16-bit compare. */
+    if ((int16_t)level <= (int16_t)highest_level && previous != NULL && previous->present
         && previous->seconds >= 0 && previous->score >= 0) {
         prev = previous;
     }
@@ -83,7 +88,8 @@ bool vcc_attempts_restart(vcc_attempts *state, uint16_t level, uint16_t moves)
     /* 4:03A7: retries only count toward the prompt after more than 30
      * steps, and never on levels 144 and 149. */
     ++state->attempts;
-    if (moves > 30U && level != 144U && level != 149U) {
+    /* 4:03AF cmp/jng: moves (state+0xA34) compared signed. */
+    if ((int16_t)moves > 30 && level != 144U && level != 149U) {
         ++state->trouble;
         if (state->trouble >= 10)
             return true;

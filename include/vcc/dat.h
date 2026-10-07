@@ -12,7 +12,7 @@
 #define VCC_MAX_LEVELS 149U
 #define VCC_TITLE_CAPACITY 64U
 #define VCC_HINT_CAPACITY 256U
-#define VCC_PASSWORD_CAPACITY 5U
+#define VCC_PASSWORD_CAPACITY 10U /* up to 9 chars (field 8); stock levels use 4 */
 #define VCC_MAX_TRAP_LINKS 22U
 #define VCC_MAX_CLONE_LINKS 18U
 #define VCC_MAX_CREATURES 99U
@@ -27,7 +27,7 @@ typedef struct vcc_trap_link {
     uint16_t button_y;
     uint16_t trap_x;
     uint16_t trap_y;
-    uint16_t initially_open;
+    uint16_t closed;  /* copied to the trap's held state, 4:07CB */
 } vcc_trap_link;
 
 typedef struct vcc_clone_link {

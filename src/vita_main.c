@@ -126,8 +126,8 @@ typedef struct audio {
 } audio;
 
 /* Performance counters written to the log once a second. */
-static volatile Uint64 audio_busy_ticks;
-static volatile Uint32 audio_calls;
+static Uint64 audio_busy_ticks;
+static Uint32 audio_calls;
 
 static void audio_callback(void *userdata, Uint8 *stream, int length)
 {
@@ -195,6 +195,11 @@ static int load_sound(sample *out, const char *name)
     if (cvt.needed && SDL_ConvertAudio(&cvt) != 0) { SDL_free(cvt.buf); return 0; }
     out->data = (int16_t *)cvt.buf;
     out->length = (size_t)(cvt.needed ? cvt.len_cvt : cvt.len) / sizeof(int16_t);
+    if (out->length == 0U) {
+        SDL_free(cvt.buf);
+        out->data = NULL;
+        return 0;
+    }
     return 1;
 }
 
@@ -309,6 +314,16 @@ typedef struct app {
 
 static app the_app;
 
+#ifdef __vita__
+/* Explicit heap and main thread stack: nested modal dialogs and FreeType
+ * rendering run on the main thread. */
+int _newlib_heap_size_user = 128 * 1024 * 1024;
+unsigned int sceUserMainThreadStackSize = 1024 * 1024;
+#endif
+
+/* Idle redraw interval matching the Vita panel's 60 Hz refresh. */
+#define RENDER_MS 16
+
 static void progress_load(vcc_progress *progress)
 {
     size_t size = 0U;
@@ -324,9 +339,13 @@ static void progress_load(vcc_progress *progress)
 static void progress_save(const vcc_progress *progress)
 {
     static char text[16384];
+    static char saved[16384];
+    static size_t saved_length;
     size_t length = vcc_progress_format(progress, text, sizeof text);
     SDL_RWops *file;
     if (length >= sizeof text) return;
+    /* Skip memory-card writes when the file would be unchanged. */
+    if (saved_length == length && memcmp(saved, text, length) == 0) return;
 #ifdef __vita__
     {
         extern int sceIoMkdir(const char *, int);
@@ -335,8 +354,15 @@ static void progress_save(const vcc_progress *progress)
 #endif
     file = SDL_RWFromFile(SAVE_PATH, "wb");
     if (!file) return;
-    (void)SDL_RWwrite(file, text, 1, length);
-    (void)SDL_RWclose(file);
+    {
+        int ok = SDL_RWwrite(file, text, 1, length) == length;
+        if (SDL_RWclose(file) != 0) ok = 0;
+        if (!ok) return;
+    }
+    {
+        memcpy(saved, text, length);
+        saved_length = length;
+    }
 }
 
 /* ---- Board and panel drawing --------------------------------------- */
@@ -602,6 +628,15 @@ static int run_dialog(app *a, ui_dialog *dialog, dialog_proc proc, void *data)
         while (result < 0 && SDL_PollEvent(&event)) {
             ui_notify notify;
             if (event.type == SDL_QUIT) { a->quit = 1; break; }
+            if (event.type == SDL_APP_WILLENTERBACKGROUND) {
+                progress_save(&a->progress);
+                if (a->sound.device != 0U) SDL_PauseAudioDevice(a->sound.device, 1);
+                continue;
+            }
+            if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+                if (a->sound.device != 0U) SDL_PauseAudioDevice(a->sound.device, 0);
+                continue;
+            }
             if (ui_dialog_event(dialog, &event, &notify))
                 result = proc(a, dialog, &notify, data);
         }
@@ -641,10 +676,16 @@ static void load_level(app *a, uint16_t index, int retry)
     if (!retry) vcc_attempts_new_level(&a->attempts);
     (void)vcc_game_start(&a->game, level);
     if (!retry && a->paused == 0 && a->progress.music) music_start(&a->sound, level->number);
-    if (entry->password[0] == '\0')
+    /* 4:05A3: only a new level that has no LevelN entry yet records its
+     * password and raises "Highest Level". */
+    if (!retry && entry->password[0] == '\0') {
         memcpy(entry->password, level->password, sizeof entry->password);
+        if (level->number > a->progress.highest_level) a->progress.highest_level = level->number;
+    }
+    /* The original writes "Current Level" only on exit and at Level
+     * Complete; the Vita has no guaranteed exit path, so it is kept current
+     * on every load. */
     a->progress.current_level = level->number;
-    if (level->number > a->progress.highest_level) a->progress.highest_level = level->number;
     progress_save(&a->progress);
 }
 
@@ -759,7 +800,7 @@ static void hook_sound(void *context, vcc_sound_id id, int interrupt)
 static void hook_died(void *context, vcc_game *game)
 {
     static const char *const messages[] = {
-        "",
+        "Ooops!",
         "Ooops! Don't step in the fire without fire boots!",
         "Ooops! Chip can't swim without flippers!",
         "Ooops! Don't touch the bombs!",
@@ -769,8 +810,13 @@ static void hook_died(void *context, vcc_game *game)
     };
     app *a = context;
     int reason = game->death;
-    if (reason < 1 || reason > 6) reason = 5;
+    int16_t sounds = a->progress.sounds;
+    /* 2:0BA8: unknown reasons show the bare "Ooops!" (DS:057C), and sound
+     * effects are muted while the box is up. */
+    if (reason < 1 || reason > 6) reason = 0;
+    a->progress.sounds = 0;
     (void)message_box(a, messages[reason], 0, 0);
+    a->progress.sounds = sounds;
     retry_level(a);
 }
 
@@ -1047,7 +1093,7 @@ static int goto_proc(app *a, ui_dialog *dialog, const ui_notify *notify, void *d
         int index;
         for (index = 0; index < (int)a->dat->level_count; ++index)
             if (SDL_strcasecmp(a->dat->levels[index].password, password_edit->text) == 0) {
-                g->number = a->dat->levels[index].number;
+                g->number = index + 1;  /* record position, 4:0FF6 */
                 return 1;
             }
     }
@@ -1161,8 +1207,10 @@ static void command_best_times(app *a)
     dialog.cancel_id = 2;
     ui_focus(&dialog, 100);
     result = run_dialog(a, &dialog, times_proc, &data);
-    resume_game(a);
+    /* 6:03A7 loads from inside the dialog, while still paused, so the
+     * loader does not restart the music. */
     if (result > 1000) go_to_level(a, result - 1000);
+    resume_game(a);
 }
 
 /* WEP4UTIL WEPABOUT2: template 101 in the System font with the
@@ -1441,13 +1489,27 @@ int main(void)
     uint32_t log_time = SDL_GetTicks() + 1000U;
     uint32_t frames = 0U;
     Uint64 frame_ticks = 0U;
+    uint32_t last_render = 0U;
     while (!a->quit) {
         SDL_Event event;
         uint32_t now;
         Uint64 frame_start = SDL_GetPerformanceCounter();
+        int dirty = 0;
         while (SDL_PollEvent(&event)) {
             int id;
+            dirty = 1;
             if (event.type == SDL_QUIT) a->quit = 1;
+            if (event.type == SDL_APP_WILLENTERBACKGROUND) {
+                /* Suspend: persist progress and silence the mixer. */
+                progress_save(&a->progress);
+                if (a->sound.device != 0U) SDL_PauseAudioDevice(a->sound.device, 1);
+                continue;
+            }
+            if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+                if (a->sound.device != 0U) SDL_PauseAudioDevice(a->sound.device, 0);
+                next_tick = SDL_GetTicks() + TICK_MS;
+                continue;
+            }
             id = ui_menu_event(&a->menu, &event);
             if (id) { command(a, id); continue; }
             if (a->menu.active >= 0) continue;
@@ -1502,22 +1564,35 @@ int main(void)
             next_tick += TICK_MS;
             if (a->ending > 0) ending_tick(a);
             else vcc_game_tick(&a->game);
+            dirty = 1;
             now = SDL_GetTicks();
             if ((int32_t)(now - next_tick) > 0) next_tick = now + TICK_MS;
         }
-        render(a);
-        frame_ticks += SDL_GetPerformanceCounter() - frame_start;
-        ++frames;
+        /* Present after input or a tick, and otherwise at most at the
+         * panel's 60 Hz; the 4 ms poll keeps input latency low. */
+        if (dirty || (int32_t)(now - last_render) >= RENDER_MS) {
+            render(a);
+            last_render = SDL_GetTicks();
+            frame_ticks += SDL_GetPerformanceCounter() - frame_start;
+            ++frames;
+        }
         if ((int32_t)(SDL_GetTicks() - log_time) >= 0) {
             double frequency = (double)SDL_GetPerformanceFrequency();
+            Uint64 busy;
+            Uint32 calls;
+            /* The counters belong to the audio thread. */
+            SDL_LockAudioDevice(a->sound.device);
+            busy = audio_busy_ticks;
+            calls = audio_calls;
+            audio_busy_ticks = 0U;
+            audio_calls = 0U;
+            SDL_UnlockAudioDevice(a->sound.device);
             log_line("level %d fps %u frame %.2f ms audio %.1f%% (%u calls) music %d sounds %d",
                 a->game.level->number, frames, frames ? (double)frame_ticks * 1000.0 / frequency / frames : 0.0,
-                (double)audio_busy_ticks * 100.0 / frequency, audio_calls, a->progress.music,
+                (double)busy * 100.0 / frequency, calls, a->progress.music,
                 a->progress.sounds);
             frames = 0U;
             frame_ticks = 0U;
-            audio_busy_ticks = 0U;
-            audio_calls = 0U;
             log_time += 1000U;
         }
         SDL_Delay(4);
@@ -1537,5 +1612,11 @@ cleanup:
     SDL_Quit();
     free(bytes);
     free(a->dat);
+#ifdef __vita__
+    {
+        extern int sceKernelExitProcess(int);
+        (void)sceKernelExitProcess(0);
+    }
+#endif
     return 0;
 }

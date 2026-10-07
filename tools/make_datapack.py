@@ -3,10 +3,11 @@
 """Build the Vita Chips Challenge data pack from your copy of the game.
 
 Usage:
-  python3 tools/make_datapack.py SOURCE [OUTPUT]
+  python tools/make_datapack.py SOURCE [OUTPUT]
 
 SOURCE is the Microsoft Windows 3.x release of Chip's Challenge, either as
-a .zip archive or as a folder holding CHIPS.EXE, CHIPS.DAT, CHIPS.HLP,
+a .zip archive or as a folder (subfolders are searched, names may be
+any case) holding CHIPS.EXE, CHIPS.DAT, CHIPS.HLP,
 WEP4UTIL.DLL, the .WAV files, and the .MID files. Every file is checked
 against the supported release before anything is converted.
 
@@ -17,6 +18,7 @@ the Vita, for example with VitaShell's FTP server.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import shutil
 import subprocess
@@ -40,53 +42,103 @@ CONVERTED = (
 )
 
 
+def find_sources(source: Path) -> dict[str, object]:
+    """Map each wanted upper-case file name to a zip member or a path.
+
+    Matching ignores case and folder nesting, so a zip holding a CHIPS/
+    subfolder or lower-case names works. The first match wins.
+    """
+    found: dict[str, object] = {}
+    if source.is_file():
+        try:
+            archive = zipfile.ZipFile(source)
+        except zipfile.BadZipFile:
+            raise SystemExit(f"error: {source} is not a valid .zip archive")
+        for member in archive.infolist():
+            if member.is_dir():
+                continue
+            name = member.filename.replace("\\", "/").rsplit("/", 1)[-1].upper()
+            if name in FILES and name not in found:
+                found[name] = (archive, member)
+    elif source.is_dir():
+        for path in sorted(source.rglob("*")):
+            name = path.name.upper()
+            if name in FILES and name not in found and path.is_file():
+                found[name] = path
+    else:
+        raise SystemExit(f"error: {source} does not exist")
+    return found
+
+
 def collect(source: Path, work: Path) -> Path:
     originals = work / "originals"
     originals.mkdir()
-    if source.is_file():
-        with zipfile.ZipFile(source) as archive:
-            for member in archive.infolist():
-                name = Path(member.filename).name.upper()
-                if name in FILES and not member.is_dir():
-                    (originals / name).write_bytes(archive.read(member))
-    else:
-        for path in source.iterdir():
-            if path.name.upper() in FILES and path.is_file():
-                shutil.copyfile(path, originals / path.name.upper())
-    missing = [name for name in FILES if not (originals / name).exists()]
+    found = find_sources(source)
+    missing = sorted(name for name in FILES if name not in found)
     if missing:
-        raise SystemExit("missing game files: " + ", ".join(sorted(missing)))
-    for name, expected in FILES.items():
-        if hashlib.sha256((originals / name).read_bytes()).hexdigest() != expected:
-            raise SystemExit(f"{name} does not match the supported Windows release")
+        raise SystemExit(
+            f"error: these game files were not found in {source}:\n  "
+            + "\n  ".join(missing)
+            + "\nPoint SOURCE at the Windows 3.x release (zip or folder).")
+    mismatched = []
+    for name, origin in found.items():
+        if isinstance(origin, Path):
+            data = origin.read_bytes()
+        else:
+            archive, member = origin
+            data = archive.read(member)
+        (originals / name).write_bytes(data)
+        if hashlib.sha256(data).hexdigest() != FILES[name]:
+            mismatched.append(name)
+    if mismatched:
+        raise SystemExit(
+            "error: these files do not match the supported Windows 3.x release:\n  "
+            + "\n  ".join(sorted(mismatched))
+            + "\nSome re-releases and patched copies differ and are not supported.")
     return originals
 
 
 def run(*command: object) -> None:
-    subprocess.run([str(part) for part in command], cwd=ROOT, check=True,
-                   stdout=subprocess.DEVNULL)
+    result = subprocess.run([str(part) for part in command], cwd=ROOT,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if result.returncode != 0:
+        sys.stderr.write(result.stdout)
+        raise SystemExit(f"error: step failed: {Path(str(command[1])).name}")
+
+
+def check_pillow() -> None:
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        raise SystemExit("error: Pillow is required. Install it with:\n"
+                         f"  {Path(sys.executable).name} -m pip install Pillow")
 
 
 def main() -> int:
-    if len(sys.argv) not in (2, 3):
-        print(__doc__, file=sys.stderr)
-        return 2
-    source = Path(sys.argv[1]).resolve()
-    output = Path(sys.argv[2]).resolve() if len(sys.argv) == 3 else ROOT / "build-vita/datapack"
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("source", type=Path,
+                        help="your copy of the game: a .zip archive or a folder")
+    parser.add_argument("output", type=Path, nargs="?", default=ROOT / "build-vita" / "datapack",
+                        help="output folder (default: build-vita/datapack)")
+    args = parser.parse_args()
+    check_pillow()
+    source = args.source.expanduser().resolve()
+    output = args.output.expanduser().resolve()
     data = output / "VitaChipsChallenge" / "data"
     with tempfile.TemporaryDirectory() as temporary:
         work = Path(temporary)
         originals = collect(source, work)
         assets = work / "assets"
-        run(sys.executable, "tools/extract_ne_resources.py", originals / "CHIPS.EXE",
-            "docs/reference-inventory.json", assets)
-        run(sys.executable, "tools/extract_ne_resources.py", originals / "WEP4UTIL.DLL",
-            "docs/wep4util-inventory.json", assets, "--prefix", "WEP_")
-        run(sys.executable, "tools/prepare_runtime_assets.py", assets)
+        run(sys.executable, ROOT / "tools" / "extract_ne_resources.py", originals / "CHIPS.EXE",
+            ROOT / "docs" / "reference-inventory.json", assets)
+        run(sys.executable, ROOT / "tools" / "extract_ne_resources.py", originals / "WEP4UTIL.DLL",
+            ROOT / "docs" / "wep4util-inventory.json", assets, "--prefix", "WEP_")
+        run(sys.executable, ROOT / "tools" / "prepare_runtime_assets.py", assets)
         if data.exists():
             shutil.rmtree(data)
         data.mkdir(parents=True)
-        run(sys.executable, "tools/convert_help.py", originals / "CHIPS.HLP", data / "help")
+        run(sys.executable, ROOT / "tools" / "convert_help.py", originals / "CHIPS.HLP", data / "help")
         for name in COPIED:
             shutil.copyfile(originals / name, data / name)
         for name in CONVERTED:

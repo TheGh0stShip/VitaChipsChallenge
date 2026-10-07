@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import pathlib
-import sys
 import zipfile
 
 ARCHIVE_SHA256 = "ffbb83dc4ca5cc9e8cbf78271b44a42ea4e7db2f4f8d1953383390acf94e7ddf"
@@ -34,12 +34,16 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def main() -> int:
-    if len(sys.argv) not in (2, 3):
-        print(f"usage: {sys.argv[0]} ARCHIVE [OUTPUT_DIR]", file=sys.stderr)
-        return 2
-    archive = pathlib.Path(sys.argv[1])
-    output = pathlib.Path(sys.argv[2]) if len(sys.argv) == 3 else archive.parent / "extracted"
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("archive", type=pathlib.Path, help="chips_challenge.zip")
+    parser.add_argument("output", type=pathlib.Path, nargs="?",
+                        help="output directory (default: ARCHIVE_DIR/extracted)")
+    args = parser.parse_args(argv)
+    archive: pathlib.Path = args.archive
+    output: pathlib.Path = args.output or archive.parent / "extracted"
+    if not archive.is_file():
+        parser.error(f"archive not found: {archive}")
     archive_data = archive.read_bytes()
     if digest(archive_data) != ARCHIVE_SHA256:
         raise SystemExit("unsupported chips_challenge.zip fingerprint")

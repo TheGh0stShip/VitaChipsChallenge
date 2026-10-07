@@ -428,7 +428,8 @@ static void trap_enter(vcc_game *game, int x, int y, int from_x, int from_y)
     if (!trap_range(game, x, y, &first, &last)) return;
     for (index = first; index <= last; ++index) {
         const vcc_trap *trap = &game->traps[index];
-        if (game->top[at(trap->button_x, trap->button_y)] == VCC_BROWN_BUTTON) continue;
+        if (in_map(trap->button_x, trap->button_y)
+            && game->top[at(trap->button_x, trap->button_y)] == VCC_BROWN_BUTTON) continue;
         if (trap->button_x == from_x && trap->button_y == from_y) continue;
         closed = 0;
         break;
@@ -779,7 +780,8 @@ static void set_slide(vcc_game *game, int sx, int sy, int x, int y, int16_t *dx,
     *dx = *out_dx;
     *dy = *out_dy;
     if (kind == 1 || kind == 2) {
-        if (kind == 2 && tile && *tile != NONE_TILE) *tile = facing(*tile, *dx, *dy);
+        /* 7:0891 turns the sprite by the incoming direction. */
+        if (kind == 2 && tile && *tile != NONE_TILE) *tile = facing(*tile, old_dx, old_dy);
         slip->tile = (tile && *tile != NONE_TILE) ? *tile : game->top[at(sx, sy)];
         slip->x = (int16_t)x;
         slip->y = (int16_t)y;
@@ -1087,7 +1089,8 @@ enter:
 place:
     game->chip_x = nx;
     game->chip_y = ny;
-    game->top[at(nx, ny)] = chip_facing(game, nx, ny, dx, dy);
+    /* 7:1688 faces the direction the slide routine may have redirected. */
+    game->top[at(nx, ny)] = chip_facing(game, nx, ny, mdx, mdy);
     if (action == 4) press_button(game, game->bottom[at(nx, ny)], nx, ny, 1);
     if (button[0])
         press_button(game, game->bottom[at(button[1], button[2])], button[1], button[2], 0);
@@ -1185,7 +1188,8 @@ static void move_monsters(vcc_game *game, int slow)
         held = ground == VCC_TRAP || ground == VCC_CLONE_MACHINE;
         switch (tile & 0xFCU) {
         case VCC_BUG_N:
-            ndx = dx; ndy = dy;
+            /* 3:084C: on a trap or clone machine the turn is skipped and the
+             * candidate left by the previous monster is tried. */
             if (!held) turn_left(dx, dy, &ndx, &ndy);
             if ((result = monster_try(game, &x, &y, &ndx, &ndy, tile)) != 0) break;
             if (held) break;
@@ -1280,7 +1284,7 @@ static void move_monsters(vcc_game *game, int slow)
             }
             break;
         case VCC_PARAMECIUM_N:
-            ndx = dx; ndy = dy;
+            /* 3:102A: as for bugs, a held paramecium reuses the candidate. */
             if (!held) turn_right(dx, dy, &ndx, &ndy);
             if ((result = monster_try(game, &x, &y, &ndx, &ndy, tile)) != 0) break;
             if (held) break;
@@ -1573,7 +1577,7 @@ int vcc_game_start(vcc_game *game, const vcc_level *level)
         game->traps[index].button_y = (int16_t)level->traps[index].button_y;
         game->traps[index].trap_x = (int16_t)level->traps[index].trap_x;
         game->traps[index].trap_y = (int16_t)level->traps[index].trap_y;
-        game->traps[index].closed = (int16_t)level->traps[index].initially_open;
+        game->traps[index].closed = (int16_t)level->traps[index].closed;
     }
     game->trap_count = (uint16_t)index;
     for (index = 0U; index < level->clone_count && index < VCC_MAX_CLONES; ++index) {

@@ -65,6 +65,8 @@ typedef struct fm_operator {
     float attack_coef;   /* per-sample attack factor, 0 = never */
     float decay_step;    /* dB per sample */
     float release_step;  /* dB per sample */
+    float base_db;       /* level + ksl_db, cached on register writes */
+    float sustain_db;    /* sustain level from register 80 */
     int state;
     uint8_t reg20, reg40, reg60, reg80, regE0;
 } fm_operator;
@@ -72,6 +74,7 @@ typedef struct fm_operator {
 typedef struct fm_channel {
     fm_operator op[2];
     uint8_t feedback_conn;
+    float feedback_scale; /* phase units per unit of summed feedback, 0 = none */
     int fnum;
     int block;
     int key;
@@ -178,6 +181,7 @@ static void update_pitch(fm_chip *chip, fm_channel *channel)
         static const float ksl_rate[4] = {0.0f, 3.0f, 1.5f, 6.0f};
         op->step = (uint32_t)(frequency * multipliers[op->reg20 & 0x0F] / chip->rate * 4294967296.0);
         op->ksl_db = octaves > 0.0 ? (float)(octaves * ksl_rate[op->reg40 >> 6]) : 0.0f;
+        op->base_db = op->level + op->ksl_db;
         update_rates(chip, channel, op);
     }
 }
@@ -195,7 +199,10 @@ static void write_reg(vcc_music *music, uint16_t reg, uint8_t value)
         case 0x20: op->reg20 = value; break;
         case 0x40: op->reg40 = value; op->level = (float)(value & 0x3F) * 0.75f; break;
         case 0x60: op->reg60 = value; break;
-        case 0x80: op->reg80 = value; break;
+        case 0x80:
+            op->reg80 = value;
+            op->sustain_db = (value >> 4) == 15 ? 93.0f : (float)(value >> 4) * 3.0f;
+            break;
         default: break;
         }
         update_pitch(chip, &chip->channel[channel_index]);
@@ -225,7 +232,11 @@ static void write_reg(vcc_music *music, uint16_t reg, uint8_t value)
         }
         channel->key = key;
     } else if (reg >= 0xC0 && reg < 0xC9) {
-        chip->channel[reg - 0xC0].feedback_conn = value;
+        fm_channel *channel = &chip->channel[reg - 0xC0];
+        int feedback = (value >> 1) & 7;
+        channel->feedback_conn = value;
+        /* Feedback reaches 4 pi (two cycles) at level 7, halving per step. */
+        channel->feedback_scale = feedback ? (float)(1 << (feedback + 2)) * 8388608.0f : 0.0f;
     }
 }
 
@@ -240,7 +251,7 @@ static double scaled_time(double base_ms, const fm_channel *channel, const fm_op
 
 static void envelope(fm_operator *op)
 {
-    float sustain = (float)((op->reg80 >> 4) == 15 ? 93.0 : (op->reg80 >> 4) * 3.0);
+    float sustain = op->sustain_db;
     switch (op->state) {
     case ENV_ATTACK:
         if (op->attack_coef <= 0.0f) break;
@@ -282,7 +293,7 @@ static float db_table[961];  /* 0.1 dB steps to 96 dB */
 
 static float amplitude(const fm_chip *chip, const fm_operator *op)
 {
-    float db = op->attenuation + op->level + op->ksl_db;
+    float db = op->attenuation + op->base_db;
     if (op->reg20 & 0x80) db += chip->lfo_am;
     if (db >= 96.0f) return 0.0f;
     return db_table[(int)(db * 10.0f)];
@@ -291,27 +302,27 @@ static float amplitude(const fm_chip *chip, const fm_operator *op)
 static float chip_sample(fm_chip *chip)
 {
     float sum = 0.0f;
+    float lfo_vib;
     int index;
     /* Tremolo 1 dB at 3.7 Hz and vibrato 7 cents at 6.1 Hz (register BD 0). */
     chip->am_phase += chip->am_step;
     chip->vib_phase += chip->vib_step;
     chip->lfo_am = 0.5f * (1.0f + sine_table[chip->am_phase >> 22]);
     chip->lfo_vib = 1.0f + 0.004f * sine_table[chip->vib_phase >> 22];
+    lfo_vib = chip->lfo_vib;
     for (index = 0; index < VOICES; ++index) {
         fm_channel *channel = &chip->channel[index];
         fm_operator *mod = &channel->op[0];
         fm_operator *car = &channel->op[1];
         float mod_out;
         float car_out;
-        int feedback = (channel->feedback_conn >> 1) & 7;
         int64_t feedback_phase = 0;
         if (mod->state == ENV_OFF && car->state == ENV_OFF) continue;
-        envelope(mod);
-        envelope(car);
-        /* Feedback reaches 4 pi (two cycles) at level 7, halving per step. */
-        if (feedback)
+        if (mod->state != ENV_SUSTAIN) envelope(mod);
+        if (car->state != ENV_SUSTAIN) envelope(car);
+        if (channel->feedback_scale != 0.0f)
             feedback_phase = (int64_t)((channel->previous[0] + channel->previous[1])
-                * (float)(1 << (feedback + 2)) * 8388608.0f);
+                * channel->feedback_scale);
         mod_out = waveform(mod->regE0, mod->phase + (uint32_t)feedback_phase) * amplitude(chip, mod);
         channel->previous[1] = channel->previous[0];
         channel->previous[0] = mod_out;
@@ -322,8 +333,8 @@ static float chip_sample(fm_chip *chip)
             car_out = waveform(car->regE0,
                 car->phase + (uint32_t)(int64_t)(mod_out * 4.0f * 4294967296.0f))
                 * amplitude(chip, car);
-        mod->phase += (mod->reg20 & 0x40) ? (uint32_t)((float)mod->step * chip->lfo_vib) : mod->step;
-        car->phase += (car->reg20 & 0x40) ? (uint32_t)((float)car->step * chip->lfo_vib) : car->step;
+        mod->phase += (mod->reg20 & 0x40) ? (uint32_t)((float)mod->step * lfo_vib) : mod->step;
+        car->phase += (car->reg20 & 0x40) ? (uint32_t)((float)car->step * lfo_vib) : car->step;
         sum += car_out;
     }
     return sum;
@@ -387,6 +398,22 @@ void vcc_music_destroy(vcc_music *music)
     free(music);
 }
 
+/* Reads a MIDI variable-length quantity (at most four bytes) without reading
+ * past end. Returns 0 when the quantity is truncated. */
+static int read_varlen(const uint8_t *data, size_t *cursor, size_t end, uint32_t *value)
+{
+    uint32_t result = 0U;
+    int count;
+    for (count = 0; count < 4; ++count) {
+        uint8_t byte;
+        if (*cursor >= end) return 0;
+        byte = data[(*cursor)++];
+        result = (result << 7) | (byte & 0x7FU);
+        if (!(byte & 0x80U)) { *value = result; return 1; }
+    }
+    return 0;
+}
+
 static int compare_events(const void *a, const void *b)
 {
     const event *x = a;
@@ -408,18 +435,19 @@ int vcc_music_load(vcc_music *music, const uint8_t *data, size_t size)
     if (music->division == 0U || (music->division & 0x8000U)) return 0;
     offset = 8U + be32(data + 4);
     for (track = 0U; track < tracks && offset + 8U <= size; ++track) {
-        size_t length = be32(data + offset + 4);
+        uint32_t length = be32(data + offset + 4);
         size_t cursor = offset + 8U;
-        size_t end = cursor + length;
+        size_t end;
         uint32_t tick = 0U;
         uint8_t running = 0U;
-        if (memcmp(data + offset, "MTrk", 4) != 0 || end > size) return 0;
+        /* Compare against the remaining size so a huge length cannot wrap a
+         * 32-bit size_t. */
+        if (memcmp(data + offset, "MTrk", 4) != 0 || length > size - cursor) return 0;
+        end = cursor + length;
         while (cursor < end) {
-            uint32_t delta = 0U;
+            uint32_t delta;
             uint8_t status;
-            do {
-                delta = (delta << 7) | (data[cursor] & 0x7FU);
-            } while ((data[cursor++] & 0x80U) && cursor < end);
+            if (!read_varlen(data, &cursor, end, &delta)) break;
             tick += delta;
             if (cursor >= end) break;
             status = data[cursor];
@@ -427,12 +455,11 @@ int vcc_music_load(vcc_music *music, const uint8_t *data, size_t size)
             else status = running;
             if (status == 0xFFU) {
                 uint8_t type;
-                uint32_t meta_length = 0U;
+                uint32_t meta_length;
                 if (cursor >= end) break;
                 type = data[cursor++];
-                do {
-                    meta_length = (meta_length << 7) | (data[cursor] & 0x7FU);
-                } while ((data[cursor++] & 0x80U) && cursor < end);
+                if (!read_varlen(data, &cursor, end, &meta_length)) break;
+                if (meta_length > end - cursor) break;
                 if (type == 0x51U && meta_length == 3U && music->event_count < MAX_EVENTS) {
                     event *e = &music->events[music->event_count++];
                     e->tick = tick;
@@ -443,10 +470,9 @@ int vcc_music_load(vcc_music *music, const uint8_t *data, size_t size)
                 cursor += meta_length;
                 if (type == 0x2FU) break;
             } else if (status == 0xF0U || status == 0xF7U) {
-                uint32_t sysex = 0U;
-                do {
-                    sysex = (sysex << 7) | (data[cursor] & 0x7FU);
-                } while ((data[cursor++] & 0x80U) && cursor < end);
+                uint32_t sysex;
+                if (!read_varlen(data, &cursor, end, &sysex)) break;
+                if (sysex > end - cursor) break;
                 cursor += sysex;
             } else if (status & 0x80U) {
                 int two = (status & 0xE0U) != 0xC0U;

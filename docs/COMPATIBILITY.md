@@ -30,7 +30,7 @@ results.
 | DAT parsing | Confirmed | All 149 records and every metadata type present in the supplied DAT parse successfully. |
 | Indexed palette | Confirmed | Exact 16 entry palettes come from `OBJ32_4`, `INFOWND`, `BACKGROUND`, `200`, and `CHIPEND`. |
 | Board and information panel | Implemented | Counters follow `2:29A6`/`9:00EA`: leading zeros blank, yellow time at 15 seconds or less (yellow `---` when untimed), yellow chips at zero. |
-| Board viewport | Implemented | Original 9 by 9 viewport and resources render in the Windows Vita3K build; physical Vita remains required. |
+| Board viewport | Implemented | Original 9 by 9 viewport and resources render in Vita3K and on PS Vita hardware. |
 | Basic player interactions | Reconstructed | `7:1184` Chip movement, the tile rule table at `DS:066C` (`3:1A56`), pickups, doors, boots, thief, socket, hint, and exit follow the original. A recorded play-through from the Windows build is still needed as a regression corpus. |
 | Clock | Reconstructed | Board timer 1 fires every 110 ms (`2:16FA`). A second is ten ticks of the never-reset counter `DS:064E` (`7:05BD`), and the timer is held after each load until the first key (`4:054D`). |
 | Monsters | Reconstructed | `3:074E` per-type turning order, teeth and blob slow ticks, Microsoft C `rand()` (`1:00DC`), and the stale-direction quirk for teeth on traps. Needs trace confirmation. |
@@ -39,10 +39,10 @@ results.
 | Teleports | Reconstructed | `3:276A` reverse reading-order search with per-mover acceptance rules. Needs trace confirmation. |
 | Progress, passwords, scores | Reconstructed | Level Complete scoring (`6:0422`), attempts and the skip prompt (`4:0356`), `ENTPACK.INI` progress and options (`2:198E`-`2:1C9F`, `2:18DE`), the password gate (`4:115C`, `4:0E48`, DLG_PASSWORD `4:1016`), Go To (`6:0000`, `4:0EAA`), Best Times (`6:018E`), and New Game (`2:1DAE`). |
 | Menus and messages | Reconstructed | CHIPSMENU with its accelerators and every command (`2:1E28`); death, trouble, completion, interlude, and ending messages; the level title and password overlay (`2:1374`); the paused board (`2:10DE`); the hint window; and WEP4UTIL's About dialog. Win3.1 menus and dialogs are redrawn, not the native ones. |
-| Sound effects | Partial | The 15-entry sound table (`DS:0336`, `DS:040A`) and interrupting `sndPlaySound` semantics (`8:056C`) are reproduced. System sounds absent from the archive stay silent as with `SND_NODEFAULT`. Some engine triggers await the engine reconstruction. |
-| Music | Implemented | The level's song (`level mod files`, `8:0308`) loops and follows Pause and Options. Playback uses a built-in OPL2-model FM synthesizer with Freedoom's GENMIDI bank, standing in for the Windows MIDI Mapper and FM driver; exact timbre depends on the original sound hardware. |
+| Sound effects | Reconstructed | The 15-entry sound table (`DS:0336`, `DS:040A`) and interrupting `sndPlaySound` semantics (`8:056C`) are reproduced, and the engine raises each sound where the original does. System sounds absent from the archive stay silent as with `SND_NODEFAULT`. |
+| Music | Implemented | The level's song (level number modulo the songs present, from the list at `DS:04A6`, `8:0308`) loops and follows Pause and Options. Playback uses a built-in OPL2-model FM synthesizer with Freedoom's GENMIDI bank, standing in for the Windows MIDI Mapper and FM driver; exact timbre depends on the original sound hardware. |
 | Controls | Implemented | Arrows with Windows-style repeat, mouse or touch walking (`2:27EA`), menus (Start), Pause (Select), Restart (Triangle), Previous and Next (L and R), dialog navigation, and the Vita IME for text fields. |
-| ARM ABI release gate | Partial | VitaSDK produces ARMv7 code. Final dependency float ABI inspection and physical Vita/PSTV validation remain required. |
+| ARM ABI release gate | Partial | VitaSDK produces ARMv7 code. Builds run on PS Vita hardware. Float ABI inspection of all linked dependencies and PSTV validation remain required. |
 
 No release should be described as gold while any required row is Partial or
 Missing.

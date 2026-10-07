@@ -7,13 +7,12 @@ used for compilation only; the Linux Vita3K build is excluded from this check.
 
 - Vita3K `0.2.1 4098-bbd5c362` on Windows 11 installed the VPK as `VITA00001`.
 - The retail based bubble, startup card, and LiveArea background rendered.
-- Vita3K loaded `app0:/data/CHIPS.DAT` and `app0:/data/OBJ32_4.bmp`.
+- Vita3K loaded the packaged game data from `app0:/data/` (a personal build;
+  release builds read `ux0:data/VitaChipsChallenge/data/`).
 - The application rendered at 960 by 544 between 85 and 108 FPS during capture.
 - A posted Windows Up key event moved Chip and the next frame rendered.
 - The first run exposed the row-major sprite lookup error. The retest used the
   corrected column-major layout of the original 416 by 512 bitmap.
-
-
 
 This emulator result verifies packaging, startup, rendering, and basic input.
 It does not replace testing on PS Vita hardware.

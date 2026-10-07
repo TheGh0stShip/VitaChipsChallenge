@@ -11,47 +11,47 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+set(VCC_WARNINGS -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+
+if(VCC_VITA)
+  # The VitaSDK toolchain leaves CPU/FPU/float-ABI to the compiler's
+  # configured defaults; only tune scheduling, never change the ABI.
+  add_compile_options(-mtune=cortex-a9 -ffunction-sections -fdata-sections)
+  add_link_options(-Wl,--gc-sections)
+endif()
+
 add_library(vcc_core STATIC src/dat.c src/game.c src/score.c src/progress.c src/music.c)
 target_include_directories(vcc_core PUBLIC include)
 if(NOT VCC_VITA)
   target_link_libraries(vcc_core PUBLIC m)
 endif()
-target_compile_options(vcc_core PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+target_compile_options(vcc_core PRIVATE ${VCC_WARNINGS})
 
 include(CTest)
 if(BUILD_TESTING)
-  add_executable(vcc_dat_tests tests/test_dat.c)
-  target_link_libraries(vcc_dat_tests PRIVATE vcc_core)
-  target_compile_options(vcc_dat_tests PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  function(vcc_add_test name source)
+    add_executable(${name} ${source})
+    target_link_libraries(${name} PRIVATE vcc_core)
+    target_compile_options(${name} PRIVATE ${VCC_WARNINGS})
+  endfunction()
+
+  vcc_add_test(vcc_dat_tests tests/test_dat.c)
   add_test(NAME dat_parser COMMAND vcc_dat_tests)
-
-  add_executable(vcc_game_tests tests/test_game.c)
-  target_link_libraries(vcc_game_tests PRIVATE vcc_core)
-  target_compile_options(vcc_game_tests PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  vcc_add_test(vcc_game_tests tests/test_game.c)
   add_test(NAME game_core COMMAND vcc_game_tests)
-
-  add_executable(vcc_score_tests tests/test_score.c)
-  target_link_libraries(vcc_score_tests PRIVATE vcc_core)
-  target_compile_options(vcc_score_tests PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  vcc_add_test(vcc_score_tests tests/test_score.c)
   add_test(NAME score COMMAND vcc_score_tests)
-
-  add_executable(vcc_progress_tests tests/test_progress.c)
-  target_link_libraries(vcc_progress_tests PRIVATE vcc_core)
-  target_compile_options(vcc_progress_tests PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  vcc_add_test(vcc_progress_tests tests/test_progress.c)
   add_test(NAME progress COMMAND vcc_progress_tests)
 
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT")
-    add_executable(vcc_reference_dat_tests tests/test_reference_dat.c)
-    target_link_libraries(vcc_reference_dat_tests PRIVATE vcc_core)
+    vcc_add_test(vcc_reference_dat_tests tests/test_reference_dat.c)
     target_compile_definitions(vcc_reference_dat_tests PRIVATE
       VCC_REFERENCE_DAT="${CMAKE_CURRENT_SOURCE_DIR}/reference/extracted/CHIPS.DAT")
-    target_compile_options(vcc_reference_dat_tests PRIVATE
-      -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
     add_test(NAME reference_dat_parser COMMAND vcc_reference_dat_tests)
   endif()
 endif()
@@ -63,8 +63,7 @@ if(VCC_VITA)
   add_executable(vita_chips src/vita_main.c src/ui.c src/help.c)
   target_link_libraries(vita_chips PRIVATE vcc_core SDL2_ttf::SDL2_ttf-static
     SDL2::SDL2 freetype png bz2 z)
-  target_compile_options(vita_chips PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow)
+  target_compile_options(vita_chips PRIVATE ${VCC_WARNINGS})
   vita_create_self(vita_chips.self vita_chips)
 
   # Game data from the player's copy of Chip's Challenge, prepared by

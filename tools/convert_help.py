@@ -29,64 +29,125 @@ from __future__ import annotations
 
 import argparse
 import struct
+import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 BLOCK = 2048
 BLOCK_HEADER = 12
 
 
+HELP_MAGIC = 0x00035F3F
+BTREE_MAGIC = 0x293B
+BTREE_HEADER = 38
+SYSTEM_MAGIC = 0x036C
+NO_PAGE = 0xFFFF
+
+
+class HelpFormatError(Exception):
+    """The input is not a WinHelp file this converter understands."""
+
+
+def need(data: bytes, offset: int, size: int, what: str) -> None:
+    if offset < 0 or offset + size > len(data):
+        raise HelpFormatError(f"{what}: offset {offset:#x}+{size} outside {len(data)} bytes")
+
+
+def btree_leaves(tree: bytes, what: str = "B-tree") -> Iterator[tuple[bytes, int]]:
+    """Yield (page, entry count) for each leaf page in key order.
+
+    Starts at the root and follows each index page's first child down to the
+    leftmost leaf, then walks the leaf chain via next-page links.
+    """
+    need(tree, 0, BTREE_HEADER, what)
+    magic, page_size = struct.unpack_from("<H2xH", tree, 0)
+    if magic != BTREE_MAGIC:
+        raise HelpFormatError(f"{what}: bad B-tree magic {magic:#06x}")
+    root, total, levels = struct.unpack_from("<H2xHH", tree, 26)
+    if page_size < 8 or levels < 1:
+        raise HelpFormatError(f"{what}: bad page size {page_size} or level count {levels}")
+
+    def page_at(number: int) -> bytes:
+        if number >= total:
+            raise HelpFormatError(f"{what}: page {number} beyond {total} pages")
+        start = BTREE_HEADER + number * page_size
+        need(tree, start, page_size, what)
+        return tree[start: start + page_size]
+
+    number = root
+    for _ in range(levels - 1):  # index pages: unused, count, first child
+        number = struct.unpack_from("<H", page_at(number), 4)[0]
+    seen = set()
+    while number != NO_PAGE:
+        if number in seen:
+            raise HelpFormatError(f"{what}: leaf chain loops at page {number}")
+        seen.add(number)
+        page = page_at(number)
+        count, number = struct.unpack_from("<H2xH", page, 2)  # unused, count, prev, next
+        yield page, count
+
+
 def read_files(data: bytes) -> dict[str, bytes]:
-    directory = struct.unpack_from("<I", data, 4)[0]
-    tree = directory + 9
-    page_size = struct.unpack_from("<H", data, tree + 4)[0]
-    pages = struct.unpack_from("<H", data, tree + 30)[0]
+    need(data, 0, 16, "help header")
+    magic, directory = struct.unpack_from("<II", data, 0)
+    if magic != HELP_MAGIC:
+        raise HelpFormatError(f"not a WinHelp file (magic {magic:#010x})")
+    need(data, directory, 9, "internal directory")
+    tree = data[directory + 9:]
     files = {}
-    for page in range(pages):
-        start = tree + 38 + page * page_size
-        count = struct.unpack_from("<H", data, start + 2)[0]
-        cursor = start + 8
+    for page, count in btree_leaves(tree, "internal directory"):
+        cursor = 8
         for _ in range(count):
-            end = data.index(b"\0", cursor)
-            name = data[cursor:end].decode("latin1")
-            offset = struct.unpack_from("<I", data, end + 1)[0]
+            end = page.index(b"\0", cursor)
+            data_name = page[cursor:end].decode("latin1")
+            offset = struct.unpack_from("<I", page, end + 1)[0]
             cursor = end + 5
+            need(data, offset, 9, f"file {data_name}")
             used = struct.unpack_from("<i", data, offset + 4)[0]
-            files[name] = data[offset + 9: offset + 9 + used]
+            need(data, offset + 9, used, f"file {data_name}")
+            files[data_name] = data[offset + 9: offset + 9 + used]
     return files
 
 
-def btree_leaves(tree: bytes):
-    page_size = struct.unpack_from("<H", tree, 4)[0]
-    levels = struct.unpack_from("<H", tree, 32)[0]
-    pages = struct.unpack_from("<H", tree, 30)[0]
-    for page in range(pages):
-        start = 38 + page * page_size
-        if start + 8 > len(tree):
-            break
-        yield tree[start: start + page_size], levels
+def check_version(files: dict[str, bytes]) -> None:
+    """Reject anything but uncompressed WinHelp 3.0-style topics."""
+    for name in ("|SYSTEM", "|TOPIC", "|TOMAP", "|FONT", "|Phrases", "|KWBTREE", "|KWDATA"):
+        if name not in files:
+            raise HelpFormatError(f"missing internal file {name} (only WinHelp 3.0 is supported)")
+    system = files["|SYSTEM"]
+    need(system, 0, 12, "|SYSTEM")
+    magic, minor, major = struct.unpack_from("<HHH", system, 0)
+    flags = struct.unpack_from("<H", system, 10)[0]
+    if magic != SYSTEM_MAGIC or major != 1:
+        raise HelpFormatError(f"|SYSTEM: bad magic {magic:#06x} or major version {major}")
+    if minor > 16 and flags & 0x0C:
+        raise HelpFormatError(f"WinHelp 3.1 compressed topics (minor {minor}, flags {flags:#x}) "
+                              "are not supported; only WinHelp 3.0 files are")
+    if minor > 16:
+        raise HelpFormatError(f"WinHelp minor version {minor} is not supported (expected 3.0)")
 
 
-def cs_long(b: bytes, i: int):
+def cs_long(b: bytes, i: int) -> tuple[int, int]:
     w = b[i] | (b[i + 1] << 8)
     if w & 1:
         return (struct.unpack_from("<I", b, i)[0] >> 1) - 0x40000000, i + 4
     return (w >> 1) - 0x4000, i + 2
 
 
-def cu_long(b: bytes, i: int):
+def cu_long(b: bytes, i: int) -> tuple[int, int]:
     w = b[i] | (b[i + 1] << 8)
     if w & 1:
         return struct.unpack_from("<I", b, i)[0] >> 1, i + 4
     return w >> 1, i + 2
 
 
-def cu_short(b: bytes, i: int):
+def cu_short(b: bytes, i: int) -> tuple[int, int]:
     if b[i] & 1:
         return (b[i] | (b[i + 1] << 8)) >> 1, i + 2
     return b[i] >> 1, i + 1
 
 
-def cs_short(b: bytes, i: int):
+def cs_short(b: bytes, i: int) -> tuple[int, int]:
     if b[i] & 1:
         return ((b[i] | (b[i + 1] << 8)) >> 1) - 0x4000, i + 2
     return (b[i] >> 1) - 0x40, i + 1
@@ -282,11 +343,15 @@ def picture(data: bytes) -> bytes | None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("help", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    files = read_files(args.help.read_bytes())
+    try:
+        files = read_files(args.help.read_bytes())
+        check_version(files)
+    except HelpFormatError as error:
+        sys.exit(f"{args.help}: {error}")
     phrases = Phrases(files["|Phrases"])
     stream = topic_stream(files["|TOPIC"])
     out: list[str] = []
@@ -321,14 +386,14 @@ def main() -> None:
         position += size
 
     keywords = files["|KWDATA"]
-    for page, levels in btree_leaves(files["|KWBTREE"]):
-        count = struct.unpack_from("<H", page, 2)[0]
+    for page, count in btree_leaves(files["|KWBTREE"], "|KWBTREE"):
         cursor = 8
         for _ in range(count):
             end = page.index(b"\0", cursor)
             word = page[cursor:end].decode("cp1252")
             hits, data_offset = struct.unpack_from("<HI", page, end + 1)
             cursor = end + 7
+            need(keywords, data_offset, 4 * hits, f"|KWDATA for {word!r}")
             for k in range(hits):
                 topic = struct.unpack_from("<I", keywords, data_offset + 4 * k)[0]
                 out.append(f"K\t{word}\t{number_of.get(topic, -1)}")
